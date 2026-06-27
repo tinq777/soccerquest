@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a472a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Soccer Quest">
+<title>Soccer Quest</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#1a472a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  #root{min-height:100%}
+  ::-webkit-scrollbar{display:none}
+  @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes bounce{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+  @keyframes fall{to{transform:translateY(100vh) rotate(360deg);opacity:0}}
+  @keyframes popIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+// ─── DATA ───────────────────────────────────────────────────────────────────
+
+const ZONES = [
+  {id:'shooting',name:'Shooting',emoji:'🎯',color:'#ef4444',completed:18,total:30,unlocked:true},
+  {id:'passing',name:'Passing',emoji:'↗️',color:'#3b82f6',completed:24,total:30,unlocked:true,done:true},
+  {id:'defending',name:'Defending',emoji:'🛡️',color:'#8b5cf6',completed:15,total:30,unlocked:true},
+  {id:'positions',name:'Positions',emoji:'📍',color:'#f97316',completed:12,total:30,unlocked:true},
+  {id:'ball_skills',name:'Ball Skills',emoji:'⚡',color:'#10b981',completed:20,total:30,unlocked:true},
+  {id:'tactics',name:'Tactics',emoji:'🧠',color:'#06b6d4',completed:18,total:30,unlocked:true},
+  {id:'game_iq',name:'Game IQ',emoji:'💡',color:'#a855f7',completed:10,total:30,unlocked:false},
+  {id:'cup_final',name:'Cup Final',emoji:'🏆',color:'#f59e0b',completed:0,total:10,unlocked:false},
+];
+
+const LESSONS = {
+  default: [
+    {id:'l1',title:'Open Shot!',subtitle:'Read the pitch!',difficulty:'Easy',streak:2,
+     scenario:'#9 is close to goal — no defenders in sight!',
+     players:[{id:'B',x:35,y:55,team:'yours',label:'B'},{id:'C',x:30,y:68,team:'yours',label:'C'},{id:'9',x:62,y:45,team:'yours',label:'9'}],
+     question:'What should #9 do?',
+     options:[{id:'A',text:'Shoot at goal!',icon:'⚽',correct:true},{id:'B',text:'Pass back',icon:'↩️',correct:false},{id:'C',text:'Wait',icon:'⏸️',correct:false},{id:'D',text:'Dribble away',icon:'🏃',correct:false}],
+     explanation:'🎉 Brilliant! SHOOT! Close to goal with space — fire it in the net!'},
+    {id:'l2',title:'Beat the Offside Trap!',subtitle:'Time your run!',difficulty:'Medium',streak:1,
+     scenario:'Defenders pushing up — #11 is making a run!',
+     players:[{id:'D',x:40,y:50,team:'yours',label:'D'},{id:'11',x:55,y:40,team:'yours',label:'11'},{id:'E',x:58,y:42,team:'opponent',label:'E'}],
+     question:'When should #11 start their run?',
+     options:[{id:'A',text:'Before the pass',icon:'⏮️',correct:false},{id:'B',text:'As the ball is played',icon:'▶️',correct:true},{id:'C',text:'After receiving',icon:'⏭️',correct:false},{id:'D',text:'Stay in position',icon:'🧍',correct:false}],
+     explanation:'⚡ Perfect! Run as the ball is played to stay onside and beat the trap!'},
+    {id:'l3',title:'Counter Attack!',subtitle:'Use your speed!',difficulty:'Hard',streak:0,
+     scenario:'Just won the ball — 3 vs 2 situation!',
+     players:[{id:'A',x:30,y:50,team:'yours',label:'A'},{id:'7',x:50,y:42,team:'yours',label:'7'},{id:'9',x:50,y:58,team:'yours',label:'9'},{id:'X',x:62,y:45,team:'opponent',label:'X'},{id:'Y',x:62,y:55,team:'opponent',label:'Y'}],
+     question:"What's the best move?",
+     options:[{id:'A',text:'Dribble past both defenders',icon:'🏃',correct:false},{id:'B',text:'Play wide, create 2v1',icon:'↗️',correct:true},{id:'C',text:'Shoot from distance',icon:'🎯',correct:false},{id:'D',text:'Pass back to keeper',icon:'↩️',correct:false}],
+     explanation:'🧠 Smart! Go wide to create a 2v1 — outnumber them and score!'},
+  ]
+};
+
+const AWARDS = [
+  {id:'fp',name:'First Pass',emoji:'⭐',gold:true,unlocked:true},
+  {id:'ss',name:'Sharp Shooter',emoji:'🥈',gold:false,unlocked:true},
+  {id:'tm',name:'Tactics Master',emoji:'🏆',gold:true,unlocked:true},
+  {id:'s7',name:'Streak 7 Days',emoji:'🔥',gold:true,unlocked:true},
+  {id:'pr',name:'Perfect Round',emoji:'⭐',gold:true,unlocked:true},
+  {id:'tc',name:'The Champion',emoji:'🔒',gold:false,unlocked:false},
+];
+
+const SHOP = [
+  {id:'gb',name:'Gold Ball',emoji:'⭐',cost:50,owned:false},
+  {id:'fb',name:'Fire Boots',emoji:'🔥',cost:80,owned:false},
+  {id:'bk',name:'Blue Kit',emoji:'👕',cost:40,owned:true},
+  {id:'hc',name:'Hero Cape',emoji:'🦸',cost:120,owned:false},
+];
+
+// ─── SHARED UI ───────────────────────────────────────────────────────────────
+
+function NavBar({active, onNav}) {
+  const tabs = [{id:'home',label:'Home',icon:'🏠'},{id:'map',label:'Map',icon:'🗺️'},{id:'awards',label:'Awards',icon:'🏆'},{id:'profile',label:'Profile',icon:'👤'}];
+  return (
+    <nav style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:430,background:'#1e3a5f',display:'flex',borderTop:'1px solid rgba(255,255,255,0.1)',zIndex:100,paddingBottom:'env(safe-area-inset-bottom)'}}>
+      {tabs.map(t => (
+        <button key={t.id} onClick={()=>onNav(t.id)} style={{flex:1,padding:'10px 4px 8px',border:'none',background:'none',display:'flex',flexDirection:'column',alignItems:'center',gap:2,cursor:'pointer',color:active===t.id?'#22c55e':'rgba(255,255,255,0.5)',fontSize:10,fontWeight:active===t.id?700:400}}>
+          <span style={{fontSize:22}}>{t.icon}</span>{t.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function ProgressBar({value,max,color='#22c55e',h=8}) {
+  const pct = Math.min(100,(value/max)*100);
+  return (
+    <div style={{background:'rgba(0,0,0,0.15)',borderRadius:99,overflow:'hidden',height:h}}>
+      <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:99,transition:'width 0.5s ease',boxShadow:`0 0 6px ${color}88`}}/>
+    </div>
+  );
+}
+
+function Stars({count=0,max=3,size=24}) {
+  return <div style={{display:'flex',gap:2}}>{Array.from({length:max}).map((_,i)=><span key={i} style={{fontSize:size,filter:i<count?'none':'grayscale(1) opacity(0.3)'}}>⭐</span>)}</div>;
+}
+
+function Btn({children,onClick,disabled,secondary,style={}}) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      background: disabled?'#6b7280':secondary?'rgba(255,255,255,0.15)':'linear-gradient(135deg,#16a34a,#22c55e)',
+      color:'#fff',border:secondary?'2px solid rgba(255,255,255,0.3)':'none',
+      borderRadius:14,padding:'13px 20px',fontSize:15,fontWeight:800,
+      cursor:disabled?'not-allowed':'pointer',
+      boxShadow:disabled||secondary?'none':'0 4px 12px rgba(34,197,94,0.4)',
+      transition:'all 0.15s',...style
+    }}>{children}</button>
+  );
+}
+
+// ─── PITCH SVG ────────────────────────────────────────────────────────────────
+
+function Pitch({players=[]}) {
+  return (
+    <div style={{width:'100%',borderRadius:12,overflow:'hidden',background:'#16a34a',padding:3}}>
+      <svg viewBox="0 0 100 65" style={{width:'100%',display:'block'}}>
+        <rect width="100" height="65" fill="#16a34a"/>
+        {[0,1,2,3,4].map(i=><rect key={i} x={i*20} y="0" width="10" height="65" fill="#15803d" opacity="0.25"/>)}
+        <rect x="2" y="2" width="96" height="61" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="0.8"/>
+        <circle cx="50" cy="32.5" r="10" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6"/>
+        <line x1="2" y1="32.5" x2="98" y2="32.5" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6"/>
+        <rect x="2" y="20" width="12" height="25" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6"/>
+        <rect x="86" y="20" width="12" height="25" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6"/>
+        <rect x="93" y="27" width="2" height="11" fill="rgba(255,255,255,0.9)" rx="0.5"/>
+        {players.map(p=>(
+          <g key={p.id} transform={`translate(${p.x},${p.y})`}>
+            <circle r="4.5" fill={p.team==='yours'?'#ef4444':'#1e40af'} stroke="#fff" strokeWidth="0.8"/>
+            <text textAnchor="middle" dominantBaseline="middle" fontSize="3.2" fill="#fff" fontWeight="bold">{p.label}</text>
+          </g>
+        ))}
+        <g transform="translate(3,59)">
+          <circle r="2" cx="2" cy="0" fill="#ef4444"/><text x="5.5" y="1" fontSize="2.8" fill="rgba(255,255,255,0.8)">Your Team</text>
+          <circle r="2" cx="28" cy="0" fill="#1e40af"/><text x="31.5" y="1" fontSize="2.8" fill="rgba(255,255,255,0.8)">Opponents</text>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+// ─── SCREENS ─────────────────────────────────────────────────────────────────
+
+function HomeScreen({state, onNav, onZone}) {
+  const zones2 = ZONES.slice(0,8);
+  return (
+    <div style={{minHeight:'100vh',background:'linear-gradient(180deg,#0f2d1a 0%,#1a472a 38%,#f0fdf4 38%)',paddingBottom:90}}>
+      {/* Header */}
+      <div style={{padding:'16px 16px 28px',background:'linear-gradient(180deg,#0f2d1a,#1a472a)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+          <div>
+            <div style={{color:'rgba(255,255,255,0.65)',fontSize:12}}>Hello,</div>
+            <div style={{color:'#fff',fontSize:20,fontWeight:900}}>Champion! 👋</div>
+            <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.12)',borderRadius:99,padding:'2px 10px',fontSize:10,color:'#86efac',fontWeight:600,marginTop:3}}>
+              <span style={{width:6,height:6,background:'#22c55e',borderRadius:'50%',display:'inline-block'}}/>Level 4
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end'}}>
+            <div style={{background:'linear-gradient(135deg,#1e40af,#3b82f6)',borderRadius:20,padding:'4px 10px',display:'flex',alignItems:'center',gap:4,fontSize:13,fontWeight:700,color:'#fff'}}>
+              <span style={{fontSize:10,fontWeight:800}}>XP</span> 850
+            </div>
+            <div style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',borderRadius:20,padding:'4px 10px',display:'flex',alignItems:'center',gap:4,fontSize:13,fontWeight:700,color:'#fff'}}>
+              ⭐ 124
+            </div>
+          </div>
+        </div>
+        <ProgressBar value={850} max={1300} color="#22c55e" h={7}/>
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:4,fontSize:10,color:'rgba(255,255,255,0.45)'}}>
+          <span>850 XP</span><span>1300 XP to Level 5</span>
+        </div>
+      </div>
+
+      {/* Logo card */}
+      <div style={{margin:'-22px 16px 12px',position:'relative',zIndex:2}}>
+        <div style={{background:'linear-gradient(135deg,#1e3a5f,#1e40af)',borderRadius:20,padding:'18px 20px',boxShadow:'0 8px 32px rgba(30,58,95,0.4)',display:'flex',alignItems:'center',gap:14,border:'1px solid rgba(255,255,255,0.1)'}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:24,fontWeight:900,color:'#fff',letterSpacing:-0.5,lineHeight:1.1}}>⚽ SOCCER</div>
+            <div style={{fontSize:24,fontWeight:900,color:'#22c55e',letterSpacing:-0.5}}>QUEST</div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,0.6)',marginTop:4}}>Pick a Training Zone — let's go! 🔥</div>
+          </div>
+          <div style={{fontSize:52}}>⚽</div>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,margin:'0 16px 14px'}}>
+        {[{id:'map',emoji:'🗺️',label:'Journey',sub:'Level 4',c:'#22c55e'},{id:'awards',emoji:'🏆',label:'Awards',sub:'124 ⭐',c:'#f59e0b'},{id:'profile',emoji:'📊',label:'Progress',sub:'5 zones',c:'#8b5cf6'}].map(b=>(
+          <button key={b.id} onClick={()=>onNav(b.id)} style={{background:'#fff',border:'none',borderRadius:16,padding:'14px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:'pointer',boxShadow:'0 2px 10px rgba(0,0,0,0.08)'}}>
+            <span style={{fontSize:26}}>{b.emoji}</span>
+            <span style={{fontSize:13,fontWeight:700,color:'#1e3a5f'}}>{b.label}</span>
+            <span style={{fontSize:10,color:b.c,fontWeight:600}}>{b.sub}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Daily challenge */}
+      <div style={{margin:'0 16px 14px',background:'#fff',borderRadius:16,padding:14,boxShadow:'0 2px 12px rgba(0,0,0,0.07)',border:'1.5px solid #fed7aa'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+          <span style={{fontSize:22}}>🎯</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:800,fontSize:13,color:'#1e3a5f'}}>Daily Challenge</div>
+            <div style={{fontSize:11,color:'#6b7280'}}>Score 5 goals in any Shooting lesson</div>
+          </div>
+          <div style={{background:'linear-gradient(135deg,#1e40af,#3b82f6)',color:'#fff',borderRadius:12,padding:'4px 10px',fontSize:13,fontWeight:800}}>XP 50</div>
+        </div>
+        <ProgressBar value={2} max={5} color="#f97316" h={7}/>
+        <div style={{textAlign:'right',fontSize:10,color:'#9ca3af',marginTop:3}}>2/5</div>
+      </div>
+
+      {/* Zone grid */}
+      <div style={{margin:'0 16px'}}>
+        <div style={{fontSize:13,fontWeight:800,color:'#1e3a5f',marginBottom:10}}>All Zones</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+          {zones2.map(z=>(
+            <button key={z.id} onClick={()=>z.unlocked&&onZone(z)} style={{background:'#fff',border:'none',borderRadius:14,padding:'10px 6px',display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:z.unlocked?'pointer':'default',boxShadow:'0 2px 8px rgba(0,0,0,0.06)',opacity:z.unlocked?1:0.6}}>
+              <div style={{width:40,height:40,borderRadius:11,background:z.color+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,position:'relative'}}>
+                {z.emoji}
+                {!z.unlocked&&<span style={{position:'absolute',top:-4,right:-4,fontSize:11}}>🔒</span>}
+              </div>
+              <span style={{fontSize:10,fontWeight:700,color:'#1e3a5f'}}>{z.name}</span>
+              <span style={{fontSize:9,color:z.color,fontWeight:600}}>⭐ {z.completed}/{z.total}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <NavBar active="home" onNav={onNav}/>
+    </div>
+  );
+}
+
+function MapScreen({onNav, onZone}) {
+  const MAP_POS = [{x:20,y:72},{x:36,y:55},{x:16,y:40},{x:59,y:62},{x:65,y:42},{x:42,y:27},{x:68,y:16},{x:45,y:7}];
+  return (
+    <div style={{minHeight:'100vh',background:'#0f2d1a',paddingBottom:90}}>
+      <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <button onClick={()=>onNav('home')} style={{background:'rgba(255,255,255,0.15)',border:'none',borderRadius:10,padding:'8px 13px',color:'#fff',fontSize:17,cursor:'pointer'}}>←</button>
+        <div style={{fontWeight:800,color:'#fff',fontSize:16}}>🗺️ Training World</div>
+        <div style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',borderRadius:20,padding:'4px 10px',fontSize:13,fontWeight:700,color:'#fff'}}>⭐ 124</div>
+      </div>
+
+      {/* Map */}
+      <div style={{position:'relative',margin:'0 14px',height:380,borderRadius:20,overflow:'hidden',border:'2px solid rgba(255,255,255,0.1)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}>
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,#87ceeb 0%,#a8d8a8 20%,#4caf50 45%,#2e7d32 100%)'}}>
+          <svg style={{position:'absolute',inset:0,width:'100%',height:'100%'}} viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M50 100 Q30 80 40 60 Q55 40 35 25 Q25 15 45 5" stroke="rgba(100,160,255,0.5)" strokeWidth="6" fill="none"/>
+            <polyline points={MAP_POS.map(p=>`${p.x},${p.y}`).join(' ')} stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" fill="none" strokeDasharray="3,3"/>
+            {[[75,78],[85,60],[10,58],[88,32],[18,18]].map(([x,y],i)=>(
+              <text key={i} x={x} y={y} fontSize="6" textAnchor="middle">🌳</text>
+            ))}
+          </svg>
+        </div>
+        {ZONES.map((z,i)=>{
+          const pos = MAP_POS[i]||{x:50,y:50};
+          return (
+            <button key={z.id} onClick={()=>z.unlocked&&onZone(z)}
+              style={{position:'absolute',left:`${pos.x}%`,top:`${pos.y}%`,transform:'translate(-50%,-50%)',
+                background:z.unlocked?z.color:'rgba(0,0,0,0.45)',border:z.done?'3px solid #22c55e':'2px solid rgba(255,255,255,0.4)',
+                borderRadius:13,padding:'5px 9px',cursor:z.unlocked?'pointer':'default',
+                display:'flex',flexDirection:'column',alignItems:'center',minWidth:64,gap:1,
+                boxShadow:z.unlocked?`0 4px 14px ${z.color}66`:'none',opacity:z.unlocked?1:0.65,position:'absolute'}}>
+              {!z.unlocked&&<span style={{position:'absolute',top:-7,right:-7,fontSize:13}}>🔒</span>}
+              {z.done&&<span style={{position:'absolute',top:-7,right:-7,fontSize:13}}>✅</span>}
+              <span style={{fontSize:10,fontWeight:800,color:'#fff'}}>{z.name.toUpperCase()}</span>
+              <span style={{fontSize:8,color:'rgba(255,255,255,0.85)'}}>⭐{z.completed}/{z.total}</span>
+            </button>
+          );
+        })}
+        <div style={{position:'absolute',bottom:8,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,0.55)',color:'#fff',borderRadius:99,padding:'4px 12px',fontSize:10,fontWeight:600,backdropFilter:'blur(4px)',display:'flex',alignItems:'center',gap:5}}>
+          <span style={{width:7,height:7,background:'#22c55e',borderRadius:'50%',display:'inline-block',boxShadow:'0 0 0 2px rgba(34,197,94,0.35)'}}/>📍 You are here
+        </div>
+      </div>
+
+      {/* Zone list */}
+      <div style={{padding:'14px'}}>
+        <div style={{fontSize:12,fontWeight:800,color:'rgba(255,255,255,0.6)',marginBottom:10,textTransform:'uppercase',letterSpacing:0.5}}>Your Zones</div>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {ZONES.filter(z=>z.unlocked).map(z=>(
+            <button key={z.id} onClick={()=>onZone(z)} style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:14,padding:'11px 13px',cursor:'pointer',display:'flex',alignItems:'center',gap:11,textAlign:'left'}}>
+              <div style={{width:42,height:42,borderRadius:12,background:z.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0,boxShadow:`0 3px 10px ${z.color}44`}}>{z.emoji}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,color:'#fff',fontSize:13}}>{z.name}</div>
+                <div style={{display:'flex',alignItems:'center',gap:7,marginTop:4}}>
+                  <div style={{flex:1,background:'rgba(255,255,255,0.1)',borderRadius:99,height:4,overflow:'hidden'}}>
+                    <div style={{height:'100%',width:`${(z.completed/z.total)*100}%`,background:z.color,borderRadius:99}}/>
+                  </div>
+                  <span style={{fontSize:10,color:'rgba(255,255,255,0.45)',whiteSpace:'nowrap'}}>{z.completed}/{z.total}</span>
+                </div>
+              </div>
+              <span style={{fontSize:17,color:'rgba(255,255,255,0.25)'}}>›</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <NavBar active="map" onNav={onNav}/>
+    </div>
+  );
+}
+
+function LessonScreen({zone, onNav, onDone}) {
+  const lessons = LESSONS.default;
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [showExp, setShowExp] = useState(false);
+  const [answers, setAnswers] = useState([]);
+  const lesson = lessons[idx];
+  const total = lessons.length;
+
+  useEffect(()=>{ setSelected(null); setShowExp(false); },[idx]);
+  useEffect(()=>{
+    if(selected!==null){ const t=setTimeout(()=>setShowExp(true),350); return ()=>clearTimeout(t); }
+  },[selected]);
+
+  const correct = lesson.options.find(o=>o.id===selected)?.correct;
+
+  const handleNext = () => {
+    const newAnswers = [...answers, {correct}];
+    if(idx+1>=total){ onDone(newAnswers); }
+    else{ setAnswers(newAnswers); setIdx(idx+1); }
+  };
+
+  const optStyle = (opt) => {
+    if(selected===null) return {background:'#fff',border:'2px solid #e5e7eb',color:'#1e3a5f',cursor:'pointer'};
+    if(opt.correct) return {background:'#dcfce7',border:'2px solid #22c55e',color:'#166534'};
+    if(opt.id===selected&&!opt.correct) return {background:'#fee2e2',border:'2px solid #ef4444',color:'#991b1b'};
+    return {background:'#f9fafb',border:'2px solid #e5e7eb',color:'#9ca3af',opacity:0.55};
+  };
+
+  const diffColor = {Easy:'#22c55e',Medium:'#f59e0b',Hard:'#ef4444'};
+
+  return (
+    <div style={{minHeight:'100vh',background:'#f0fdf4',display:'flex',flexDirection:'column'}}>
+      {/* Header */}
+      <div style={{background:'#1e3a5f',padding:'12px 14px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}}>
+          <button onClick={()=>onNav('map')} style={{background:'rgba(255,255,255,0.15)',border:'none',borderRadius:10,padding:'7px 12px',color:'#fff',fontSize:17,cursor:'pointer'}}>←</button>
+          <div style={{textAlign:'center'}}>
+            <div style={{color:'#fff',fontWeight:800,fontSize:14}}>{zone?.emoji} {lesson.subtitle}</div>
+            <div style={{color:'rgba(255,255,255,0.55)',fontSize:11}}>{lesson.title}</div>
+          </div>
+          <div style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',borderRadius:20,padding:'4px 10px',fontSize:12,fontWeight:700,color:'#fff'}}>⭐ 124</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:7}}>
+          <ProgressBar value={idx+(selected!==null?1:0)} max={total} color="#22c55e" h={6} />
+          <span style={{fontSize:10,color:'rgba(255,255,255,0.6)',whiteSpace:'nowrap'}}>{idx+1}/{total}</span>
+        </div>
+        <div style={{display:'flex',gap:6,marginTop:7}}>
+          <span style={{background:diffColor[lesson.difficulty]||'#6b7280',color:'#fff',borderRadius:99,padding:'2px 9px',fontSize:10,fontWeight:700}}>{lesson.difficulty}</span>
+          {lesson.streak>0&&<span style={{background:'linear-gradient(135deg,#ef4444,#f97316)',color:'#fff',borderRadius:99,padding:'2px 9px',fontSize:10,fontWeight:700}}>🔥 Streak {lesson.streak}</span>}
+        </div>
+      </div>
+
+      {/* Scenario */}
+      <div style={{background:'linear-gradient(135deg,#1e40af,#3b82f6)',padding:'14px'}}>
+        <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:11}}>
+          <div style={{width:38,height:38,background:'rgba(255,255,255,0.2)',borderRadius:50,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0}}>🧑‍🏫</div>
+          <div style={{background:'rgba(255,255,255,0.15)',borderRadius:'4px 13px 13px 13px',padding:'9px 13px'}}>
+            <div style={{color:'#fff',fontWeight:800,fontSize:14,marginBottom:2}}>{lesson.title}</div>
+            <div style={{color:'rgba(255,255,255,0.85)',fontSize:12}}>{lesson.scenario}</div>
+          </div>
+        </div>
+        <Pitch players={lesson.players}/>
+      </div>
+
+      {/* Q&A */}
+      <div style={{padding:'14px',flex:1}}>
+        <div style={{fontWeight:800,fontSize:15,color:'#1e3a5f',marginBottom:11}}>{lesson.question}</div>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {lesson.options.map(opt=>(
+            <button key={opt.id} onClick={()=>selected===null&&setSelected(opt.id)}
+              style={{...optStyle(opt),borderRadius:13,padding:'12px 13px',display:'flex',alignItems:'center',gap:9,fontSize:13,fontWeight:600,textAlign:'left',transition:'all 0.2s'}}>
+              <span style={{width:27,height:27,borderRadius:8,background:selected!==null&&opt.correct?'#22c55e':selected===opt.id&&!opt.correct?'#ef4444':'#e5e7eb',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:selected!==null&&(opt.correct||opt.id===selected)?'#fff':'#6b7280',flexShrink:0}}>
+                {selected!==null&&opt.correct?'✓':selected===opt.id&&!opt.correct?'✗':opt.id}
+              </span>
+              <span style={{fontSize:14}}>{opt.icon}</span>
+              {opt.text}
+            </button>
+          ))}
+        </div>
+        {showExp&&(
+          <div style={{marginTop:11,background:correct?'#dcfce7':'#fee2e2',border:`1.5px solid ${correct?'#22c55e':'#ef4444'}`,borderRadius:13,padding:'11px 13px',animation:'slideUp 0.3s ease'}}>
+            <div style={{fontWeight:700,fontSize:12,color:correct?'#166534':'#991b1b'}}>{lesson.explanation}</div>
+          </div>
+        )}
+      </div>
+
+      <div style={{padding:'0 14px 24px'}}>
+        <Btn onClick={handleNext} disabled={selected===null} style={{width:'100%',opacity:selected===null?0.5:1}}>Next →</Btn>
+      </div>
+    </div>
+  );
+}
+
+function ResultsScreen({answers, onPlayAgain, onNav}) {
+  const [animIn, setAnimIn] = useState(false);
+  useEffect(()=>{ const t=setTimeout(()=>setAnimIn(true),120); return ()=>clearTimeout(t); },[]);
+  const correct = answers.filter(a=>a.correct).length;
+  const total = answers.length||3;
+  const acc = Math.round((correct/total)*100);
+  const stars = acc>=90?3:acc>=60?2:1;
+  const isPerfect = correct===total;
+
+  const pieces = Array.from({length:28}).map((_,i)=>({
+    id:i, x:Math.random()*100, delay:Math.random()*1.2,
+    color:['#f59e0b','#22c55e','#3b82f6','#ef4444','#a855f7'][i%5],
+    size:5+Math.random()*7,
+  }));
+
+  return (
+    <div style={{minHeight:'100vh',background:'linear-gradient(180deg,#1a472a,#2d6a3f 50%,#1e3a5f)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px 18px',position:'relative',overflow:'hidden'}}>
+      {/* Confetti */}
+      <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none'}}>
+        {pieces.map(p=><div key={p.id} style={{position:'absolute',left:`${p.x}%`,top:'-10px',width:p.size,height:p.size,background:p.color,borderRadius:Math.random()>0.5?'50%':2,animation:`fall ${1.4+Math.random()}s ${p.delay}s ease-in forwards`}}/>)}
+      </div>
+
+      <div style={{background:'rgba(255,255,255,0.09)',backdropFilter:'blur(10px)',border:'1.5px solid rgba(255,255,255,0.14)',borderRadius:24,padding:'26px 22px',width:'100%',maxWidth:360,textAlign:'center',transform:animIn?'scale(1) translateY(0)':'scale(0.88) translateY(20px)',opacity:animIn?1:0,transition:'all 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>
+        <div style={{fontSize:60,marginBottom:6,display:'inline-block',animation:animIn?'bounce 0.6s 0.5s ease both':'none'}}>🏆</div>
+        <div style={{fontSize:30,fontWeight:900,color:'#fff',marginBottom:3}}>{isPerfect?'PERFECT!':acc>=60?'BRILLIANT!':'GOOD TRY!'}</div>
+        <div style={{color:'rgba(255,255,255,0.65)',fontSize:13,marginBottom:18}}>{isPerfect?'You aced it! Incredible!':'You crushed this round!'}</div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+          {[{label:'Score',value:`${correct}/${total}`,emoji:'⚽'},{label:'Accuracy',value:`${acc}%`,emoji:'🎯'}].map(item=>(
+            <div key={item.label} style={{background:'rgba(255,255,255,0.1)',borderRadius:14,padding:'13px 10px'}}>
+              <div style={{fontSize:20,marginBottom:3}}>{item.emoji}</div>
+              <div style={{fontSize:22,fontWeight:900,color:'#fff'}}>{item.value}</div>
+              <div style={{fontSize:10,color:'rgba(255,255,255,0.55)'}}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{display:'flex',justifyContent:'center',marginBottom:14}}><Stars count={stars} max={3} size={34}/></div>
+
+        <div style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',borderRadius:13,padding:'11px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:9}}>
+          <span style={{fontSize:22}}>🧑‍🏫</span>
+          <span style={{fontSize:12,fontWeight:700,color:'#fff'}}>{isPerfect?'Perfect score! You\'re a champion! 🏆':'Keep it up, Champion! 💪 Almost there!'}</span>
+        </div>
+
+        <div style={{background:'rgba(34,197,94,0.18)',border:'1px solid rgba(34,197,94,0.28)',borderRadius:11,padding:'7px 14px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{color:'#86efac',fontSize:12,fontWeight:600}}>⚡ XP Earned</span>
+          <span style={{color:'#22c55e',fontSize:17,fontWeight:900}}>+{correct*10}</span>
+        </div>
+
+        <div style={{display:'flex',gap:9}}>
+          <Btn onClick={onPlayAgain} style={{flex:1}}>🔄 Play Again</Btn>
+          <button onClick={()=>onNav('map')} style={{flex:1,background:'rgba(255,255,255,0.13)',color:'#fff',border:'2px solid rgba(255,255,255,0.22)',borderRadius:13,padding:'13px 10px',fontSize:13,fontWeight:700,cursor:'pointer'}}>🗺️ Back to Map</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileScreen({onNav}) {
+  const zones = [{name:'Shooting',color:'#ef4444',done:18,total:30},{name:'Passing',color:'#3b82f6',done:24,total:30},{name:'Defending',color:'#8b5cf6',done:15,total:30},{name:'Tactics',color:'#06b6d4',done:18,total:30},{name:'Ball Skills',color:'#10b981',done:20,total:30}];
+  const stats = [{label:'Lessons',value:28,emoji:'📚'},{label:'Stars',value:124,emoji:'⭐'},{label:'Accuracy',value:'78%',emoji:'🎯'},{label:'Best Streak',value:'7 days',emoji:'🔥'}];
+  return (
+    <div style={{minHeight:'100vh',background:'#f0fdf4',paddingBottom:90}}>
+      <div style={{background:'linear-gradient(180deg,#1e3a5f,#1e40af)',padding:'22px 18px 32px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{width:68,height:68,borderRadius:'50%',background:'linear-gradient(135deg,#22c55e,#16a34a)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:30,border:'3px solid rgba(255,255,255,0.3)'}}>⚽</div>
+          <div>
+            <div style={{color:'#fff',fontWeight:900,fontSize:20}}>Alex</div>
+            <div style={{color:'rgba(255,255,255,0.65)',fontSize:12}}>Level 4 Player</div>
+            <div style={{marginTop:5,background:'rgba(255,255,255,0.13)',color:'#86efac',borderRadius:99,padding:'2px 10px',fontSize:10,fontWeight:600,display:'inline-block'}}>🔥 2 day streak</div>
+          </div>
+        </div>
+        <div style={{marginTop:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:5,fontSize:11,color:'rgba(255,255,255,0.6)'}}>
+            <span>850 / 1300 XP</span><span style={{color:'#86efac',fontWeight:700}}>Level 5 →</span>
+          </div>
+          <ProgressBar value={850} max={1300} color="#22c55e" h={9}/>
+        </div>
+      </div>
+
+      <div style={{margin:'-16px 14px 14px',background:'#fff',borderRadius:20,padding:16,boxShadow:'0 4px 20px rgba(0,0,0,0.09)',position:'relative',zIndex:2}}>
+        <div style={{fontWeight:800,color:'#1e3a5f',marginBottom:12,fontSize:14}}>📊 My Stats</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          {stats.map(s=>(
+            <div key={s.label} style={{background:'#f8fafc',borderRadius:12,padding:'11px',display:'flex',alignItems:'center',gap:9}}>
+              <span style={{fontSize:20}}>{s.emoji}</span>
+              <div><div style={{fontWeight:800,color:'#1e3a5f',fontSize:15}}>{s.value}</div><div style={{fontSize:9,color:'#6b7280'}}>{s.label}</div></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{margin:'0 14px'}}>
+        <div style={{background:'#fff',borderRadius:16,padding:14,boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
+          <div style={{fontWeight:800,color:'#1e3a5f',marginBottom:11,fontSize:14}}>🗺️ Zone Progress</div>
+          {zones.map(z=>(
+            <div key={z.name} style={{marginBottom:9}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:11,fontWeight:600,color:'#374151',marginBottom:3}}>
+                <span>{z.name}</span><span style={{color:z.color}}>{z.done}/{z.total}</span>
+              </div>
+              <ProgressBar value={z.done} max={z.total} color={z.color} h={6}/>
+            </div>
+          ))}
+        </div>
+      </div>
+      <NavBar active="profile" onNav={onNav}/>
+    </div>
+  );
+}
+
+function AwardsScreen({onNav}) {
+  const [tab, setTab] = useState('awards');
+  return (
+    <div style={{minHeight:'100vh',background:'#f0fdf4',paddingBottom:90}}>
+      <div style={{background:'linear-gradient(180deg,#1e3a5f,#1e40af)',padding:'18px 18px 22px'}}>
+        <div style={{textAlign:'center',marginBottom:14}}>
+          <div style={{fontSize:26,marginBottom:3}}>🏆</div>
+          <div style={{fontWeight:900,color:'#fff',fontSize:18}}>Awards & Shop</div>
+          <div style={{color:'rgba(255,255,255,0.55)',fontSize:12}}>⭐ 124 stars collected</div>
+        </div>
+        <div style={{display:'flex',background:'rgba(255,255,255,0.1)',borderRadius:12,padding:4}}>
+          {['awards','shop'].map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:'8px',border:'none',borderRadius:10,background:tab===t?'#fff':'none',color:tab===t?'#1e3a5f':'rgba(255,255,255,0.65)',fontWeight:700,fontSize:13,cursor:'pointer',transition:'all 0.2s'}}>
+              {t==='awards'?'🏅 Awards':'🛒 Shop'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{padding:'14px'}}>
+        {tab==='awards'?(
+          <>
+            <div style={{fontWeight:800,color:'#1e3a5f',fontSize:14,marginBottom:11}}>My Badges</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:9,marginBottom:16}}>
+              {AWARDS.map(a=>(
+                <div key={a.id} style={{background:a.unlocked?'#fff':'#f3f4f6',borderRadius:15,padding:'14px 9px',textAlign:'center',boxShadow:a.unlocked?'0 2px 10px rgba(0,0,0,0.07)':'none',border:a.unlocked?`2px solid ${a.gold?'#f59e0b':'#e5e7eb'}`:'2px dashed #d1d5db',opacity:a.unlocked?1:0.6}}>
+                  <div style={{fontSize:30,marginBottom:5,filter:a.unlocked?'none':'grayscale(1)'}}>{a.emoji}</div>
+                  <div style={{fontSize:9,fontWeight:700,color:'#374151',lineHeight:1.3}}>{a.name}</div>
+                  {!a.unlocked&&<div style={{fontSize:9,color:'#9ca3af',marginTop:2}}>🔒 Locked</div>}
+                </div>
+              ))}
+            </div>
+            <div style={{background:'#fff',borderRadius:15,padding:13,boxShadow:'0 2px 10px rgba(0,0,0,0.06)',border:'2px solid #fde68a'}}>
+              <div style={{display:'flex',alignItems:'center',gap:11}}>
+                <span style={{fontSize:30}}>📦</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,color:'#1e3a5f',fontSize:13}}>Collect 100 stars</div>
+                  <div style={{fontSize:11,color:'#6b7280',marginBottom:5}}>Unlock the mystery reward!</div>
+                  <ProgressBar value={70} max={100} color="#f59e0b" h={7}/>
+                  <div style={{fontSize:10,color:'#6b7280',marginTop:3}}>70 / 100</div>
+                </div>
+              </div>
+            </div>
+          </>
+        ):(
+          <>
+            <div style={{fontWeight:800,color:'#1e3a5f',fontSize:14,marginBottom:11}}>Star Store</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {SHOP.map(item=>(
+                <div key={item.id} style={{background:'#fff',borderRadius:15,padding:'14px 12px',boxShadow:'0 2px 10px rgba(0,0,0,0.06)',textAlign:'center',border:item.owned?'2px solid #22c55e':'2px solid transparent'}}>
+                  <div style={{fontSize:34,marginBottom:7}}>{item.emoji}</div>
+                  <div style={{fontWeight:700,color:'#1e3a5f',fontSize:12,marginBottom:6}}>{item.name}</div>
+                  {item.owned?<div style={{background:'#dcfce7',color:'#16a34a',borderRadius:99,padding:'4px 11px',fontSize:10,fontWeight:700}}>✓ Owned</div>
+                    :<button style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',color:'#fff',border:'none',borderRadius:99,padding:'5px 13px',fontSize:11,fontWeight:700,cursor:'pointer'}}>⭐ {item.cost}</button>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <NavBar active="awards" onNav={onNav}/>
+    </div>
+  );
+}
+
+// ─── APP ─────────────────────────────────────────────────────────────────────
+
+function App() {
+  const [screen, setScreen] = useState('home');
+  const [zone, setZone] = useState(null);
+  const [answers, setAnswers] = useState([]);
+
+  const onNav = (s) => setScreen(s);
+  const onZone = (z) => { setZone(z); setAnswers([]); setScreen('lesson'); };
+  const onDone = (ans) => { setAnswers(ans); setScreen('results'); };
+  const onPlayAgain = () => { setAnswers([]); setScreen('lesson'); };
+
+  const wrap = (children) => (
+    <div style={{maxWidth:430,margin:'0 auto',minHeight:'100vh',position:'relative',overflowX:'hidden',boxShadow:'0 0 60px rgba(0,0,0,0.25)'}}>
+      {children}
+    </div>
+  );
+
+  if(screen==='home') return wrap(<HomeScreen state={{}} onNav={onNav} onZone={onZone}/>);
+  if(screen==='map') return wrap(<MapScreen onNav={onNav} onZone={onZone}/>);
+  if(screen==='lesson') return wrap(<LessonScreen zone={zone} onNav={onNav} onDone={onDone}/>);
+  if(screen==='results') return wrap(<ResultsScreen answers={answers} onPlayAgain={onPlayAgain} onNav={onNav}/>);
+  if(screen==='profile') return wrap(<ProfileScreen onNav={onNav}/>);
+  if(screen==='awards') return wrap(<AwardsScreen onNav={onNav}/>);
+  return wrap(<HomeScreen state={{}} onNav={onNav} onZone={onZone}/>);
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
