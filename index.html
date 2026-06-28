@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1a472a">
+<meta name="theme-color" content="#0f172a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Soccer Quest">
@@ -12,595 +12,624 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;background:#1a472a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
-  #root{min-height:100%}
-  ::-webkit-scrollbar{display:none}
-  @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes bounce{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
-  @keyframes fall{to{transform:translateY(100vh) rotate(360deg);opacity:0}}
-  @keyframes popIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+#root{min-height:100%}
+::-webkit-scrollbar{display:none}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce{0%{transform:scale(0.4) rotate(-10deg);opacity:0}60%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:0}}
+.zone-btn:active{transform:scale(0.95)!important}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useCallback } = React;
+const {useState,useEffect} = React;
 
-// ─── DATA ───────────────────────────────────────────────────────────────────
-
-const ZONES = [
-  {id:'shooting',name:'Shooting',emoji:'🎯',color:'#ef4444',completed:18,total:30,unlocked:true},
-  {id:'passing',name:'Passing',emoji:'↗️',color:'#3b82f6',completed:24,total:30,unlocked:true,done:true},
-  {id:'defending',name:'Defending',emoji:'🛡️',color:'#8b5cf6',completed:15,total:30,unlocked:true},
-  {id:'positions',name:'Positions',emoji:'📍',color:'#f97316',completed:12,total:30,unlocked:true},
-  {id:'ball_skills',name:'Ball Skills',emoji:'⚡',color:'#10b981',completed:20,total:30,unlocked:true},
-  {id:'tactics',name:'Tactics',emoji:'🧠',color:'#06b6d4',completed:18,total:30,unlocked:true},
-  {id:'game_iq',name:'Game IQ',emoji:'💡',color:'#a855f7',completed:10,total:30,unlocked:false},
-  {id:'cup_final',name:'Cup Final',emoji:'🏆',color:'#f59e0b',completed:0,total:10,unlocked:false},
+const ZONES=[
+  {id:'shooting', name:'Shooting',  bg:'#ef4444',icon:'🎯',completed:18,total:30,unlocked:true},
+  {id:'passing',  name:'Passing',   bg:'#3b82f6',icon:'↗️',completed:24,total:30,unlocked:true,done:true},
+  {id:'defending',name:'Defending', bg:'#8b5cf6',icon:'🛡️',completed:15,total:30,unlocked:true},
+  {id:'positions',name:'Positions', bg:'#f97316',icon:'📍',completed:12,total:30,unlocked:true},
+  {id:'ballskills',name:'Ball Skills',bg:'#10b981',icon:'⚡',completed:20,total:30,unlocked:true},
+  {id:'tactics',  name:'Tactics',   bg:'#06b6d4',icon:'🧠',completed:18,total:30,unlocked:true},
+  {id:'gameiq',   name:'Game IQ',   bg:'#a855f7',icon:'💡',completed:10,total:30,unlocked:false},
+  {id:'cupfinal', name:'Cup Final', bg:'#f59e0b',icon:'🏆',completed:0, total:10,unlocked:false},
 ];
 
-const LESSONS = {
-  default: [
-    {id:'l1',title:'Open Shot!',subtitle:'Read the pitch!',difficulty:'Easy',streak:2,
-     scenario:'#9 is close to goal — no defenders in sight!',
-     players:[{id:'B',x:35,y:55,team:'yours',label:'B'},{id:'C',x:30,y:68,team:'yours',label:'C'},{id:'9',x:62,y:45,team:'yours',label:'9'}],
-     question:'What should #9 do?',
-     options:[{id:'A',text:'Shoot at goal!',icon:'⚽',correct:true},{id:'B',text:'Pass back',icon:'↩️',correct:false},{id:'C',text:'Wait',icon:'⏸️',correct:false},{id:'D',text:'Dribble away',icon:'🏃',correct:false}],
-     explanation:'🎉 Brilliant! SHOOT! Close to goal with space — fire it in the net!'},
-    {id:'l2',title:'Beat the Offside Trap!',subtitle:'Time your run!',difficulty:'Medium',streak:1,
-     scenario:'Defenders pushing up — #11 is making a run!',
-     players:[{id:'D',x:40,y:50,team:'yours',label:'D'},{id:'11',x:55,y:40,team:'yours',label:'11'},{id:'E',x:58,y:42,team:'opponent',label:'E'}],
-     question:'When should #11 start their run?',
-     options:[{id:'A',text:'Before the pass',icon:'⏮️',correct:false},{id:'B',text:'As the ball is played',icon:'▶️',correct:true},{id:'C',text:'After receiving',icon:'⏭️',correct:false},{id:'D',text:'Stay in position',icon:'🧍',correct:false}],
-     explanation:'⚡ Perfect! Run as the ball is played to stay onside and beat the trap!'},
-    {id:'l3',title:'Counter Attack!',subtitle:'Use your speed!',difficulty:'Hard',streak:0,
-     scenario:'Just won the ball — 3 vs 2 situation!',
-     players:[{id:'A',x:30,y:50,team:'yours',label:'A'},{id:'7',x:50,y:42,team:'yours',label:'7'},{id:'9',x:50,y:58,team:'yours',label:'9'},{id:'X',x:62,y:45,team:'opponent',label:'X'},{id:'Y',x:62,y:55,team:'opponent',label:'Y'}],
-     question:"What's the best move?",
-     options:[{id:'A',text:'Dribble past both defenders',icon:'🏃',correct:false},{id:'B',text:'Play wide, create 2v1',icon:'↗️',correct:true},{id:'C',text:'Shoot from distance',icon:'🎯',correct:false},{id:'D',text:'Pass back to keeper',icon:'↩️',correct:false}],
-     explanation:'🧠 Smart! Go wide to create a 2v1 — outnumber them and score!'},
-  ]
-};
+const MAP_POS=[{x:18,y:70},{x:38,y:56},{x:15,y:38},{x:60,y:64},{x:65,y:40},{x:40,y:24},{x:70,y:14},{x:44,y:6}];
 
-const AWARDS = [
-  {id:'fp',name:'First Pass',emoji:'⭐',gold:true,unlocked:true},
-  {id:'ss',name:'Sharp Shooter',emoji:'🥈',gold:false,unlocked:true},
-  {id:'tm',name:'Tactics Master',emoji:'🏆',gold:true,unlocked:true},
-  {id:'s7',name:'Streak 7 Days',emoji:'🔥',gold:true,unlocked:true},
-  {id:'pr',name:'Perfect Round',emoji:'⭐',gold:true,unlocked:true},
-  {id:'tc',name:'The Champion',emoji:'🔒',gold:false,unlocked:false},
+const LESSONS=[
+  {id:'l1',title:'Open Shot!',subtitle:'Read the pitch!',difficulty:'Easy',streak:2,
+   scenario:'#9 is close to goal — no defenders in sight!',
+   players:[{x:35,y:55,team:'y',label:'B'},{x:30,y:68,team:'y',label:'C'},{x:62,y:45,team:'y',label:'9'}],
+   question:'What should #9 do?',
+   options:[{id:'A',icon:'⚽',text:'Shoot at goal!',ok:true},{id:'B',icon:'↩️',text:'Pass back',ok:false},{id:'C',icon:'⏸️',text:'Wait',ok:false},{id:'D',icon:'🏃',text:'Dribble away',ok:false}],
+   tip:'🎉 Brilliant! SHOOT! Close to goal with space — fire it in the net!'},
+  {id:'l2',title:'Beat the Offside Trap!',subtitle:'Time your run!',difficulty:'Medium',streak:1,
+   scenario:'Defenders pushing up — #11 making a run!',
+   players:[{x:40,y:50,team:'y',label:'D'},{x:55,y:40,team:'y',label:'11'},{x:58,y:42,team:'o',label:'E'}],
+   question:'When should #11 start their run?',
+   options:[{id:'A',icon:'⏮️',text:'Before the pass',ok:false},{id:'B',icon:'▶️',text:'As the ball is played',ok:true},{id:'C',icon:'⏭️',text:'After receiving',ok:false},{id:'D',icon:'🧍',text:'Stay in position',ok:false}],
+   tip:'⚡ Perfect! Run as the ball is played to stay onside and beat the trap!'},
+  {id:'l3',title:'Counter Attack!',subtitle:'Use your speed!',difficulty:'Hard',streak:0,
+   scenario:'Just won the ball — 3 vs 2 situation!',
+   players:[{x:30,y:50,team:'y',label:'A'},{x:50,y:42,team:'y',label:'7'},{x:50,y:58,team:'y',label:'9'},{x:62,y:45,team:'o',label:'X'},{x:62,y:55,team:'o',label:'Y'}],
+   question:"What's the best move?",
+   options:[{id:'A',icon:'🏃',text:'Dribble past both',ok:false},{id:'B',icon:'↗️',text:'Play wide, create 2v1',ok:true},{id:'C',icon:'🎯',text:'Shoot from distance',ok:false},{id:'D',icon:'↩️',text:'Pass back to keeper',ok:false}],
+   tip:'🧠 Smart! Go wide to create a 2v1 — outnumber them and score!'},
+  {id:'l4',title:'Penalty Kick!',subtitle:'Pick your spot!',difficulty:'Easy',streak:3,
+   scenario:'Penalty awarded! Step up and score!',
+   players:[{x:55,y:50,team:'y',label:'P'},{x:78,y:48,team:'o',label:'GK'}],
+   question:'Where do you aim?',
+   options:[{id:'A',icon:'↖️',text:'Top left corner',ok:true},{id:'B',icon:'↕️',text:'Straight at keeper',ok:false},{id:'C',icon:'↗️',text:'Top right corner',ok:true},{id:'D',icon:'🚀',text:'Blast it high',ok:false}],
+   tip:'🎯 Top corner! The keeper dives low — aim high to score!'},
+  {id:'l5',title:'1v1 with the Keeper!',subtitle:'Stay calm!',difficulty:'Medium',streak:0,
+   scenario:'Just you and the keeper — stay calm!',
+   players:[{x:58,y:50,team:'y',label:'9'},{x:76,y:50,team:'o',label:'GK'}],
+   question:'What is the best technique?',
+   options:[{id:'A',icon:'💨',text:'Chip over the keeper',ok:true},{id:'B',icon:'💪',text:'Blast it hard',ok:false},{id:'C',icon:'⏸️',text:'Stop and wait',ok:false},{id:'D',icon:'↩️',text:'Pass to teammate',ok:false}],
+   tip:'✨ Brilliant chip! Lift it over the rushing keeper — classic finish!'},
 ];
 
-const SHOP = [
-  {id:'gb',name:'Gold Ball',emoji:'⭐',cost:50,owned:false},
-  {id:'fb',name:'Fire Boots',emoji:'🔥',cost:80,owned:false},
-  {id:'bk',name:'Blue Kit',emoji:'👕',cost:40,owned:true},
-  {id:'hc',name:'Hero Cape',emoji:'🦸',cost:120,owned:false},
+const AWARDS=[
+  {name:'First Pass',emoji:'⭐',gold:true,unlocked:true},
+  {name:'Sharp Shooter',emoji:'🥈',gold:false,unlocked:true},
+  {name:'Tactics Master',emoji:'🏆',gold:true,unlocked:true},
+  {name:'Streak 7 Days',emoji:'🔥',gold:true,unlocked:true},
+  {name:'Perfect Round',emoji:'⭐',gold:true,unlocked:true},
+  {name:'The Champion',emoji:'🔒',gold:false,unlocked:false},
 ];
 
-// ─── SHARED UI ───────────────────────────────────────────────────────────────
+const SHOP=[
+  {n:'Gold Ball',e:'⭐',cost:50,owned:false},
+  {n:'Fire Boots',e:'🔥',cost:80,owned:false},
+  {n:'Blue Kit',e:'👕',cost:40,owned:true},
+  {n:'Hero Cape',e:'🦸',cost:120,owned:false},
+];
 
-function NavBar({active, onNav}) {
-  const tabs = [{id:'home',label:'Home',icon:'🏠'},{id:'map',label:'Map',icon:'🗺️'},{id:'awards',label:'Awards',icon:'🏆'},{id:'profile',label:'Profile',icon:'👤'}];
-  return (
-    <nav style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:430,background:'#1e3a5f',display:'flex',borderTop:'1px solid rgba(255,255,255,0.1)',zIndex:100,paddingBottom:'env(safe-area-inset-bottom)'}}>
-      {tabs.map(t => (
-        <button key={t.id} onClick={()=>onNav(t.id)} style={{flex:1,padding:'10px 4px 8px',border:'none',background:'none',display:'flex',flexDirection:'column',alignItems:'center',gap:2,cursor:'pointer',color:active===t.id?'#22c55e':'rgba(255,255,255,0.5)',fontSize:10,fontWeight:active===t.id?700:400}}>
-          <span style={{fontSize:22}}>{t.icon}</span>{t.label}
+// ── SHARED ──────────────────────────────────────────────────────────────────
+
+function Bar({val,max,color,h=8,style={}}) {
+  const p=Math.min(100,(val/max)*100);
+  return(
+    <div style={{background:'rgba(0,0,0,0.12)',borderRadius:99,overflow:'hidden',height:h,...style}}>
+      <div style={{height:'100%',width:`${p}%`,background:color,borderRadius:99,transition:'width 0.6s ease',boxShadow:`0 0 8px ${color}99`}}/>
+    </div>
+  );
+}
+
+function Stars({n=0,size=22}){
+  return <span>{[0,1,2].map(i=><span key={i} style={{fontSize:size,filter:i<n?'none':'grayscale(1) opacity(0.25)',marginRight:2}}>⭐</span>)}</span>;
+}
+
+function GreenBtn({children,onClick,disabled,style={}}){
+  return(
+    <button onClick={onClick} disabled={disabled} style={{background:disabled?'#4b5563':'linear-gradient(135deg,#16a34a,#22c55e)',color:'#fff',border:'none',borderRadius:16,padding:'15px 24px',fontSize:16,fontWeight:800,cursor:disabled?'default':'pointer',boxShadow:disabled?'none':'0 5px 15px rgba(34,197,94,0.45)',width:'100%',...style}}>
+      {children}
+    </button>
+  );
+}
+
+function NavBar({active,go}){
+  const tabs=[{id:'home',icon:'🏠',label:'Home'},{id:'map',icon:'🗺️',label:'Map'},{id:'awards',icon:'🏆',label:'Awards'},{id:'profile',icon:'👤',label:'Profile'}];
+  return(
+    <nav style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:430,background:'#1e293b',display:'flex',zIndex:200,paddingBottom:'env(safe-area-inset-bottom)',borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+      {tabs.map(t=>(
+        <button key={t.id} onClick={()=>go(t.id)} style={{flex:1,padding:'10px 4px 8px',border:'none',background:'none',display:'flex',flexDirection:'column',alignItems:'center',gap:2,cursor:'pointer',color:active===t.id?'#22c55e':'rgba(255,255,255,0.4)',fontSize:9.5,fontWeight:active===t.id?800:500,transition:'color 0.2s'}}>
+          <span style={{fontSize:23}}>{t.icon}</span>{t.label}
         </button>
       ))}
     </nav>
   );
 }
 
-function ProgressBar({value,max,color='#22c55e',h=8}) {
-  const pct = Math.min(100,(value/max)*100);
-  return (
-    <div style={{background:'rgba(0,0,0,0.15)',borderRadius:99,overflow:'hidden',height:h}}>
-      <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:99,transition:'width 0.5s ease',boxShadow:`0 0 6px ${color}88`}}/>
+// ── HOME ────────────────────────────────────────────────────────────────────
+
+function Home({go,startZone}){
+  return(
+    <div style={{minHeight:'100vh',background:'#f0fdf4',paddingBottom:90}}>
+      {/* Dark header */}
+      <div style={{background:'linear-gradient(170deg,#0c1a2e 0%,#0f2d1a 100%)',padding:'18px 18px 40px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
+          <div>
+            <div style={{color:'rgba(255,255,255,0.5)',fontSize:13}}>Hello,</div>
+            <div style={{color:'#fff',fontSize:22,fontWeight:900,letterSpacing:-0.5}}>Champion! 👋</div>
+            <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'rgba(34,197,94,0.18)',border:'1px solid rgba(34,197,94,0.35)',borderRadius:99,padding:'3px 11px',fontSize:11,color:'#4ade80',fontWeight:700,marginTop:5}}>
+              <span style={{width:7,height:7,background:'#22c55e',borderRadius:'50%',display:'inline-block'}}/>Level 4
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:7,alignItems:'flex-end'}}>
+            <div style={{background:'linear-gradient(135deg,#1d4ed8,#3b82f6)',borderRadius:22,padding:'6px 14px',fontSize:14,fontWeight:800,color:'#fff',boxShadow:'0 4px 14px rgba(59,130,246,0.5)'}}>XP 850</div>
+            <div style={{background:'linear-gradient(135deg,#b45309,#f59e0b)',borderRadius:22,padding:'6px 14px',fontSize:14,fontWeight:800,color:'#fff',boxShadow:'0 4px 14px rgba(245,158,11,0.5)'}}>⭐ 124</div>
+          </div>
+        </div>
+        <Bar val={850} max={1300} color="#22c55e" h={8}/>
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:5,fontSize:10,color:'rgba(255,255,255,0.35)'}}>
+          <span>850 XP</span><span>1300 XP to Level 5</span>
+        </div>
+      </div>
+
+      {/* Logo card — overlaps header */}
+      <div style={{margin:'-28px 14px 14px',position:'relative',zIndex:10}}>
+        <div style={{background:'linear-gradient(135deg,#1e3a8a,#2563eb)',borderRadius:22,padding:'20px 22px',boxShadow:'0 10px 40px rgba(37,99,235,0.5)',display:'flex',alignItems:'center',justifyContent:'space-between',overflow:'hidden',border:'1px solid rgba(255,255,255,0.1)'}}>
+          <div style={{position:'absolute',top:-30,right:80,width:120,height:120,background:'rgba(255,255,255,0.04)',borderRadius:'50%'}}/>
+          <div>
+            <div style={{fontSize:26,fontWeight:900,color:'#fff',letterSpacing:-1,lineHeight:1}}>⚽ SOCCER</div>
+            <div style={{fontSize:26,fontWeight:900,color:'#4ade80',letterSpacing:-1}}>QUEST</div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,0.6)',marginTop:6}}>Pick a Training Zone — let's go! 🔥</div>
+          </div>
+          <div style={{fontSize:60,filter:'drop-shadow(0 4px 14px rgba(0,0,0,0.3))'}}>⚽</div>
+        </div>
+      </div>
+
+      {/* 3 action buttons */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,margin:'0 14px 14px'}}>
+        {[{id:'map',icon:'🗺️',label:'Journey',sub:'Level 4',c:'#22c55e'},{id:'awards',icon:'🏆',label:'Awards',sub:'124 ⭐',c:'#f59e0b'},{id:'profile',icon:'📊',label:'Progress',sub:'5 zones',c:'#a855f7'}].map(b=>(
+          <button key={b.id} onClick={()=>go(b.id)} style={{background:'#fff',border:'none',borderRadius:18,padding:'16px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:5,cursor:'pointer',boxShadow:'0 4px 16px rgba(0,0,0,0.1)',transition:'transform 0.15s'}}
+            onTouchStart={e=>e.currentTarget.style.transform='scale(0.95)'}
+            onTouchEnd={e=>e.currentTarget.style.transform='scale(1)'}>
+            <span style={{fontSize:30}}>{b.icon}</span>
+            <span style={{fontSize:13,fontWeight:800,color:'#1e293b'}}>{b.label}</span>
+            <span style={{fontSize:11,color:b.c,fontWeight:700}}>{b.sub}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Daily challenge */}
+      <div style={{margin:'0 14px 16px',background:'#fff',borderRadius:18,padding:'15px 16px',boxShadow:'0 4px 18px rgba(0,0,0,0.08)',border:'2px solid #fed7aa'}}>
+        <div style={{display:'flex',alignItems:'center',gap:11,marginBottom:9}}>
+          <div style={{width:44,height:44,background:'linear-gradient(135deg,#ea580c,#f97316)',borderRadius:13,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0,boxShadow:'0 4px 12px rgba(249,115,22,0.4)'}}>🎯</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:800,fontSize:14,color:'#1e293b'}}>Daily Challenge</div>
+            <div style={{fontSize:12,color:'#64748b',marginTop:1}}>Score 5 goals in any Shooting lesson</div>
+          </div>
+          <div style={{background:'linear-gradient(135deg,#1d4ed8,#3b82f6)',color:'#fff',borderRadius:12,padding:'6px 12px',fontSize:13,fontWeight:800,boxShadow:'0 3px 10px rgba(59,130,246,0.4)'}}>XP 50</div>
+        </div>
+        <Bar val={2} max={5} color="#f97316" h={9}/>
+        <div style={{textAlign:'right',fontSize:11,color:'#94a3b8',marginTop:4,fontWeight:600}}>2/5</div>
+      </div>
+
+      {/* All Zones grid */}
+      <div style={{margin:'0 14px'}}>
+        <div style={{fontSize:16,fontWeight:900,color:'#1e293b',marginBottom:12}}>All Zones</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:10}}>
+          {ZONES.map(z=>(
+            <button key={z.id} className="zone-btn" onClick={()=>z.unlocked&&startZone(z)}
+              style={{background:'#fff',border:'none',borderRadius:16,padding:'13px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:z.unlocked?'pointer':'default',boxShadow:'0 3px 12px rgba(0,0,0,0.08)',opacity:z.unlocked?1:0.5,transition:'transform 0.15s',position:'relative'}}>
+              <div style={{width:48,height:48,borderRadius:14,background:`linear-gradient(135deg,${z.bg},${z.bg}bb)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:23,boxShadow:`0 4px 12px ${z.bg}55`,position:'relative'}}>
+                {z.unlocked?z.icon:'🔒'}
+              </div>
+              <span style={{fontSize:9.5,fontWeight:800,color:'#1e293b',textAlign:'center',lineHeight:1.2}}>{z.name}</span>
+              <span style={{fontSize:9,color:z.bg,fontWeight:700}}>⭐{z.completed}/{z.total}</span>
+              {z.done&&<span style={{position:'absolute',top:3,right:3,fontSize:11}}>✅</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{height:20}}/>
+      <NavBar active="home" go={go}/>
     </div>
   );
 }
 
-function Stars({count=0,max=3,size=24}) {
-  return <div style={{display:'flex',gap:2}}>{Array.from({length:max}).map((_,i)=><span key={i} style={{fontSize:size,filter:i<count?'none':'grayscale(1) opacity(0.3)'}}>⭐</span>)}</div>;
-}
+// ── MAP ─────────────────────────────────────────────────────────────────────
 
-function Btn({children,onClick,disabled,secondary,style={}}) {
-  return (
-    <button onClick={onClick} disabled={disabled} style={{
-      background: disabled?'#6b7280':secondary?'rgba(255,255,255,0.15)':'linear-gradient(135deg,#16a34a,#22c55e)',
-      color:'#fff',border:secondary?'2px solid rgba(255,255,255,0.3)':'none',
-      borderRadius:14,padding:'13px 20px',fontSize:15,fontWeight:800,
-      cursor:disabled?'not-allowed':'pointer',
-      boxShadow:disabled||secondary?'none':'0 4px 12px rgba(34,197,94,0.4)',
-      transition:'all 0.15s',...style
-    }}>{children}</button>
+function Map({go,startZone}){
+  return(
+    <div style={{minHeight:'100vh',background:'#0f172a',paddingBottom:90}}>
+      <div style={{padding:'16px 18px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <button onClick={()=>go('home')} style={{background:'rgba(255,255,255,0.12)',border:'none',borderRadius:12,padding:'9px 15px',color:'#fff',fontSize:18,cursor:'pointer',fontWeight:700}}>←</button>
+        <div style={{fontWeight:900,color:'#fff',fontSize:17}}>🗺️ Training World</div>
+        <div style={{background:'linear-gradient(135deg,#b45309,#f59e0b)',borderRadius:20,padding:'5px 12px',fontSize:13,fontWeight:800,color:'#fff'}}>⭐ 124</div>
+      </div>
+
+      <div style={{position:'relative',margin:'0 14px',borderRadius:22,overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,0.5)',border:'2px solid rgba(255,255,255,0.08)'}}>
+        <svg viewBox="0 0 100 115" style={{width:'100%',display:'block'}}>
+          <defs>
+            <linearGradient id="grd" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#87ceeb"/>
+              <stop offset="35%" stopColor="#b8e4f7"/>
+              <stop offset="35%" stopColor="#4caf50"/>
+              <stop offset="100%" stopColor="#1b5e20"/>
+            </linearGradient>
+          </defs>
+          <rect width="100" height="115" fill="url(#grd)"/>
+          {/* Clouds */}
+          <ellipse cx="20" cy="12" rx="11" ry="5" fill="white" opacity="0.9"/>
+          <ellipse cx="27" cy="10" rx="8" ry="5" fill="white" opacity="0.9"/>
+          <ellipse cx="72" cy="8" rx="9" ry="4" fill="white" opacity="0.8"/>
+          <ellipse cx="78" cy="7" rx="7" ry="4" fill="white" opacity="0.8"/>
+          {/* River */}
+          <path d="M46 115 Q34 98 42 82 Q54 65 36 50 Q26 38 34 25 Q41 12 46 4" stroke="#60a5fa" strokeWidth="7" fill="none" opacity="0.65"/>
+          {/* Bridge */}
+          <rect x="33" y="47" width="10" height="4" fill="#8B6914" rx="1"/>
+          <rect x="33" y="45" width="2" height="6" fill="#6B4F10"/>
+          <rect x="41" y="45" width="2" height="6" fill="#6B4F10"/>
+          {/* Trees */}
+          {[[8,58],[12,44],[80,74],[85,57],[22,82],[90,36],[6,30],[76,28]].map(([x,y],i)=>(
+            <g key={i} transform={`translate(${x},${y})`}>
+              <rect x="-1" y="2" width="2" height="4" fill="#5d4037"/>
+              <ellipse cx="0" cy="0" rx="4.5" ry="5.5" fill="#2e7d32"/>
+              <ellipse cx="0" cy="-2" rx="3" ry="3.5" fill="#43a047"/>
+            </g>
+          ))}
+          {/* Dashed path */}
+          <polyline points={MAP_POS.map(p=>`${p.x},${p.y}`).join(' ')} stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" fill="none" strokeDasharray="2.5,2.5"/>
+          {/* Zone pins */}
+          {ZONES.map((z,i)=>{
+            const pos=MAP_POS[i];
+            return(
+              <g key={z.id} style={{cursor:z.unlocked?'pointer':'default'}} onClick={()=>z.unlocked&&startZone(z)}>
+                <ellipse cx={pos.x} cy={pos.y+6} rx="9" ry="3.5" fill="rgba(0,0,0,0.2)"/>
+                <circle cx={pos.x} cy={pos.y} r="9" fill={z.unlocked?z.bg:'#374151'} stroke="white" strokeWidth={z.done?2.5:1.5}/>
+                {z.done&&<circle cx={pos.x} cy={pos.y} r="10.5" fill="none" stroke="#22c55e" strokeWidth="2"/>}
+                <text x={pos.x} y={pos.y+1} textAnchor="middle" dominantBaseline="middle" fontSize="6.5">{z.unlocked?z.icon:'🔒'}</text>
+                <rect x={pos.x-10} y={pos.y+10} width="20" height="7" rx="3.5" fill={z.unlocked?z.bg:'#374151'} opacity="0.92"/>
+                <text x={pos.x} y={pos.y+15} textAnchor="middle" fontSize="3.2" fill="white" fontWeight="bold">{z.name.toUpperCase()}</text>
+                <text x={pos.x} y={pos.y+21.5} textAnchor="middle" fontSize="2.8" fill="rgba(255,255,230,0.9)">⭐{z.completed}/{z.total}</text>
+              </g>
+            );
+          })}
+          {/* Castle */}
+          <g transform="translate(44,3)" opacity="0.65">
+            <rect x="-5" y="0" width="10" height="7" fill="#64748b"/>
+            <rect x="-6" y="-3" width="3" height="4" fill="#64748b"/>
+            <rect x="3" y="-3" width="3" height="4" fill="#64748b"/>
+            <rect x="-2.5" y="-5" width="5" height="3" fill="#475569"/>
+          </g>
+        </svg>
+        <div style={{position:'absolute',bottom:10,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,0.65)',color:'#fff',borderRadius:99,padding:'4px 14px',fontSize:11,fontWeight:700,backdropFilter:'blur(6px)',display:'flex',alignItems:'center',gap:6,whiteSpace:'nowrap'}}>
+          <span style={{width:8,height:8,background:'#22c55e',borderRadius:'50%',display:'inline-block',boxShadow:'0 0 0 3px rgba(34,197,94,0.35)'}}/>📍 You are here
+        </div>
+      </div>
+
+      <div style={{padding:'16px'}}>
+        <div style={{fontSize:12,fontWeight:800,color:'rgba(255,255,255,0.45)',marginBottom:10,textTransform:'uppercase',letterSpacing:0.8}}>Your Zones</div>
+        <div style={{display:'flex',flexDirection:'column',gap:9}}>
+          {ZONES.filter(z=>z.unlocked).map(z=>(
+            <button key={z.id} onClick={()=>startZone(z)} style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:16,padding:'13px 15px',cursor:'pointer',display:'flex',alignItems:'center',gap:13,textAlign:'left'}}
+              onTouchStart={e=>e.currentTarget.style.background='rgba(255,255,255,0.13)'}
+              onTouchEnd={e=>e.currentTarget.style.background='rgba(255,255,255,0.07)'}>
+              <div style={{width:46,height:46,borderRadius:13,background:`linear-gradient(135deg,${z.bg},${z.bg}bb)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0,boxShadow:`0 4px 14px ${z.bg}55`}}>{z.icon}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:800,color:'#fff',fontSize:14,marginBottom:5,display:'flex',alignItems:'center',gap:6}}>{z.name}{z.done&&<span style={{fontSize:13}}>✅</span>}</div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div style={{flex:1,background:'rgba(255,255,255,0.1)',borderRadius:99,height:5,overflow:'hidden'}}>
+                    <div style={{height:'100%',width:`${(z.completed/z.total)*100}%`,background:z.bg,borderRadius:99}}/>
+                  </div>
+                  <span style={{fontSize:10,color:'rgba(255,255,255,0.35)',whiteSpace:'nowrap',fontWeight:600}}>{z.completed}/{z.total}</span>
+                </div>
+              </div>
+              <span style={{color:'rgba(255,255,255,0.2)',fontSize:22}}>›</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <NavBar active="map" go={go}/>
+    </div>
   );
 }
 
-// ─── PITCH SVG ────────────────────────────────────────────────────────────────
+// ── PITCH ───────────────────────────────────────────────────────────────────
 
-function Pitch({players=[]}) {
-  return (
-    <div style={{width:'100%',borderRadius:12,overflow:'hidden',background:'#16a34a',padding:3}}>
+function Pitch({players}){
+  return(
+    <div style={{borderRadius:14,overflow:'hidden',background:'#15803d',padding:3}}>
       <svg viewBox="0 0 100 65" style={{width:'100%',display:'block'}}>
         <rect width="100" height="65" fill="#16a34a"/>
-        {[0,1,2,3,4].map(i=><rect key={i} x={i*20} y="0" width="10" height="65" fill="#15803d" opacity="0.25"/>)}
-        <rect x="2" y="2" width="96" height="61" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="0.8"/>
-        <circle cx="50" cy="32.5" r="10" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6"/>
-        <line x1="2" y1="32.5" x2="98" y2="32.5" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6"/>
-        <rect x="2" y="20" width="12" height="25" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6"/>
-        <rect x="86" y="20" width="12" height="25" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6"/>
-        <rect x="93" y="27" width="2" height="11" fill="rgba(255,255,255,0.9)" rx="0.5"/>
-        {players.map(p=>(
-          <g key={p.id} transform={`translate(${p.x},${p.y})`}>
-            <circle r="4.5" fill={p.team==='yours'?'#ef4444':'#1e40af'} stroke="#fff" strokeWidth="0.8"/>
-            <text textAnchor="middle" dominantBaseline="middle" fontSize="3.2" fill="#fff" fontWeight="bold">{p.label}</text>
+        {[0,1,2,3,4].map(i=><rect key={i} x={i*20} width="10" height="65" fill="#15803d" opacity="0.28"/>)}
+        <rect x="2" y="2" width="96" height="61" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="0.8"/>
+        <circle cx="50" cy="32.5" r="10" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.7"/>
+        <circle cx="50" cy="32.5" r="1.2" fill="rgba(255,255,255,0.5)"/>
+        <line x1="50" y1="2" x2="50" y2="63" stroke="rgba(255,255,255,0.4)" strokeWidth="0.7"/>
+        <rect x="2" y="19" width="14" height="27" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="0.7"/>
+        <rect x="84" y="19" width="14" height="27" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="0.7"/>
+        <rect x="92" y="26" width="6" height="13" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="0.6"/>
+        <rect x="96.5" y="27" width="2" height="11" fill="rgba(255,255,255,0.85)" rx="0.5"/>
+        {players.map((p,i)=>(
+          <g key={i} transform={`translate(${p.x},${p.y})`}>
+            <circle r="5" fill={p.team==='y'?'#dc2626':'#1d4ed8'} stroke="white" strokeWidth="1.2"/>
+            <text textAnchor="middle" dominantBaseline="middle" fontSize="3.5" fill="white" fontWeight="800">{p.label}</text>
           </g>
         ))}
-        <g transform="translate(3,59)">
-          <circle r="2" cx="2" cy="0" fill="#ef4444"/><text x="5.5" y="1" fontSize="2.8" fill="rgba(255,255,255,0.8)">Your Team</text>
-          <circle r="2" cx="28" cy="0" fill="#1e40af"/><text x="31.5" y="1" fontSize="2.8" fill="rgba(255,255,255,0.8)">Opponents</text>
+        <g transform="translate(3,60)">
+          <circle cx="2" r="2" fill="#dc2626"/>
+          <text x="5.5" y="1" fontSize="2.8" fill="rgba(255,255,255,0.85)">Your Team</text>
+          <circle cx="30" r="2" fill="#1d4ed8"/>
+          <text x="33.5" y="1" fontSize="2.8" fill="rgba(255,255,255,0.85)">Opponents</text>
         </g>
       </svg>
     </div>
   );
 }
 
-// ─── SCREENS ─────────────────────────────────────────────────────────────────
+// ── LESSON ──────────────────────────────────────────────────────────────────
 
-function HomeScreen({state, onNav, onZone}) {
-  const zones2 = ZONES.slice(0,8);
-  return (
-    <div style={{minHeight:'100vh',background:'linear-gradient(180deg,#0f2d1a 0%,#1a472a 38%,#f0fdf4 38%)',paddingBottom:90}}>
-      {/* Header */}
-      <div style={{padding:'16px 16px 28px',background:'linear-gradient(180deg,#0f2d1a,#1a472a)'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-          <div>
-            <div style={{color:'rgba(255,255,255,0.65)',fontSize:12}}>Hello,</div>
-            <div style={{color:'#fff',fontSize:20,fontWeight:900}}>Champion! 👋</div>
-            <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.12)',borderRadius:99,padding:'2px 10px',fontSize:10,color:'#86efac',fontWeight:600,marginTop:3}}>
-              <span style={{width:6,height:6,background:'#22c55e',borderRadius:'50%',display:'inline-block'}}/>Level 4
-            </div>
-          </div>
-          <div style={{display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end'}}>
-            <div style={{background:'linear-gradient(135deg,#1e40af,#3b82f6)',borderRadius:20,padding:'4px 10px',display:'flex',alignItems:'center',gap:4,fontSize:13,fontWeight:700,color:'#fff'}}>
-              <span style={{fontSize:10,fontWeight:800}}>XP</span> 850
-            </div>
-            <div style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',borderRadius:20,padding:'4px 10px',display:'flex',alignItems:'center',gap:4,fontSize:13,fontWeight:700,color:'#fff'}}>
-              ⭐ 124
-            </div>
-          </div>
-        </div>
-        <ProgressBar value={850} max={1300} color="#22c55e" h={7}/>
-        <div style={{display:'flex',justifyContent:'space-between',marginTop:4,fontSize:10,color:'rgba(255,255,255,0.45)'}}>
-          <span>850 XP</span><span>1300 XP to Level 5</span>
-        </div>
-      </div>
+function Lesson({zone,go,onDone}){
+  const [idx,setIdx]=useState(0);
+  const [sel,setSel]=useState(null);
+  const [showTip,setShowTip]=useState(false);
+  const [answers,setAnswers]=useState([]);
+  const lesson=LESSONS[idx];
+  const total=LESSONS.length;
+  const diffC={Easy:'#22c55e',Medium:'#f59e0b',Hard:'#ef4444'};
 
-      {/* Logo card */}
-      <div style={{margin:'-22px 16px 12px',position:'relative',zIndex:2}}>
-        <div style={{background:'linear-gradient(135deg,#1e3a5f,#1e40af)',borderRadius:20,padding:'18px 20px',boxShadow:'0 8px 32px rgba(30,58,95,0.4)',display:'flex',alignItems:'center',gap:14,border:'1px solid rgba(255,255,255,0.1)'}}>
-          <div style={{flex:1}}>
-            <div style={{fontSize:24,fontWeight:900,color:'#fff',letterSpacing:-0.5,lineHeight:1.1}}>⚽ SOCCER</div>
-            <div style={{fontSize:24,fontWeight:900,color:'#22c55e',letterSpacing:-0.5}}>QUEST</div>
-            <div style={{fontSize:12,color:'rgba(255,255,255,0.6)',marginTop:4}}>Pick a Training Zone — let's go! 🔥</div>
-          </div>
-          <div style={{fontSize:52}}>⚽</div>
-        </div>
-      </div>
+  useEffect(()=>{setSel(null);setShowTip(false);},[idx]);
+  useEffect(()=>{if(sel!==null){const t=setTimeout(()=>setShowTip(true),400);return()=>clearTimeout(t);}},[sel]);
 
-      {/* Action buttons */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,margin:'0 16px 14px'}}>
-        {[{id:'map',emoji:'🗺️',label:'Journey',sub:'Level 4',c:'#22c55e'},{id:'awards',emoji:'🏆',label:'Awards',sub:'124 ⭐',c:'#f59e0b'},{id:'profile',emoji:'📊',label:'Progress',sub:'5 zones',c:'#8b5cf6'}].map(b=>(
-          <button key={b.id} onClick={()=>onNav(b.id)} style={{background:'#fff',border:'none',borderRadius:16,padding:'14px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:'pointer',boxShadow:'0 2px 10px rgba(0,0,0,0.08)'}}>
-            <span style={{fontSize:26}}>{b.emoji}</span>
-            <span style={{fontSize:13,fontWeight:700,color:'#1e3a5f'}}>{b.label}</span>
-            <span style={{fontSize:10,color:b.c,fontWeight:600}}>{b.sub}</span>
-          </button>
-        ))}
-      </div>
+  const isOk=lesson.options.find(o=>o.id===sel)?.ok;
 
-      {/* Daily challenge */}
-      <div style={{margin:'0 16px 14px',background:'#fff',borderRadius:16,padding:14,boxShadow:'0 2px 12px rgba(0,0,0,0.07)',border:'1.5px solid #fed7aa'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-          <span style={{fontSize:22}}>🎯</span>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:800,fontSize:13,color:'#1e3a5f'}}>Daily Challenge</div>
-            <div style={{fontSize:11,color:'#6b7280'}}>Score 5 goals in any Shooting lesson</div>
-          </div>
-          <div style={{background:'linear-gradient(135deg,#1e40af,#3b82f6)',color:'#fff',borderRadius:12,padding:'4px 10px',fontSize:13,fontWeight:800}}>XP 50</div>
-        </div>
-        <ProgressBar value={2} max={5} color="#f97316" h={7}/>
-        <div style={{textAlign:'right',fontSize:10,color:'#9ca3af',marginTop:3}}>2/5</div>
-      </div>
-
-      {/* Zone grid */}
-      <div style={{margin:'0 16px'}}>
-        <div style={{fontSize:13,fontWeight:800,color:'#1e3a5f',marginBottom:10}}>All Zones</div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
-          {zones2.map(z=>(
-            <button key={z.id} onClick={()=>z.unlocked&&onZone(z)} style={{background:'#fff',border:'none',borderRadius:14,padding:'10px 6px',display:'flex',flexDirection:'column',alignItems:'center',gap:3,cursor:z.unlocked?'pointer':'default',boxShadow:'0 2px 8px rgba(0,0,0,0.06)',opacity:z.unlocked?1:0.6}}>
-              <div style={{width:40,height:40,borderRadius:11,background:z.color+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,position:'relative'}}>
-                {z.emoji}
-                {!z.unlocked&&<span style={{position:'absolute',top:-4,right:-4,fontSize:11}}>🔒</span>}
-              </div>
-              <span style={{fontSize:10,fontWeight:700,color:'#1e3a5f'}}>{z.name}</span>
-              <span style={{fontSize:9,color:z.color,fontWeight:600}}>⭐ {z.completed}/{z.total}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <NavBar active="home" onNav={onNav}/>
-    </div>
-  );
-}
-
-function MapScreen({onNav, onZone}) {
-  const MAP_POS = [{x:20,y:72},{x:36,y:55},{x:16,y:40},{x:59,y:62},{x:65,y:42},{x:42,y:27},{x:68,y:16},{x:45,y:7}];
-  return (
-    <div style={{minHeight:'100vh',background:'#0f2d1a',paddingBottom:90}}>
-      <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <button onClick={()=>onNav('home')} style={{background:'rgba(255,255,255,0.15)',border:'none',borderRadius:10,padding:'8px 13px',color:'#fff',fontSize:17,cursor:'pointer'}}>←</button>
-        <div style={{fontWeight:800,color:'#fff',fontSize:16}}>🗺️ Training World</div>
-        <div style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',borderRadius:20,padding:'4px 10px',fontSize:13,fontWeight:700,color:'#fff'}}>⭐ 124</div>
-      </div>
-
-      {/* Map */}
-      <div style={{position:'relative',margin:'0 14px',height:380,borderRadius:20,overflow:'hidden',border:'2px solid rgba(255,255,255,0.1)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}>
-        <div style={{position:'absolute',inset:0,background:'linear-gradient(180deg,#87ceeb 0%,#a8d8a8 20%,#4caf50 45%,#2e7d32 100%)'}}>
-          <svg style={{position:'absolute',inset:0,width:'100%',height:'100%'}} viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M50 100 Q30 80 40 60 Q55 40 35 25 Q25 15 45 5" stroke="rgba(100,160,255,0.5)" strokeWidth="6" fill="none"/>
-            <polyline points={MAP_POS.map(p=>`${p.x},${p.y}`).join(' ')} stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" fill="none" strokeDasharray="3,3"/>
-            {[[75,78],[85,60],[10,58],[88,32],[18,18]].map(([x,y],i)=>(
-              <text key={i} x={x} y={y} fontSize="6" textAnchor="middle">🌳</text>
-            ))}
-          </svg>
-        </div>
-        {ZONES.map((z,i)=>{
-          const pos = MAP_POS[i]||{x:50,y:50};
-          return (
-            <button key={z.id} onClick={()=>z.unlocked&&onZone(z)}
-              style={{position:'absolute',left:`${pos.x}%`,top:`${pos.y}%`,transform:'translate(-50%,-50%)',
-                background:z.unlocked?z.color:'rgba(0,0,0,0.45)',border:z.done?'3px solid #22c55e':'2px solid rgba(255,255,255,0.4)',
-                borderRadius:13,padding:'5px 9px',cursor:z.unlocked?'pointer':'default',
-                display:'flex',flexDirection:'column',alignItems:'center',minWidth:64,gap:1,
-                boxShadow:z.unlocked?`0 4px 14px ${z.color}66`:'none',opacity:z.unlocked?1:0.65,position:'absolute'}}>
-              {!z.unlocked&&<span style={{position:'absolute',top:-7,right:-7,fontSize:13}}>🔒</span>}
-              {z.done&&<span style={{position:'absolute',top:-7,right:-7,fontSize:13}}>✅</span>}
-              <span style={{fontSize:10,fontWeight:800,color:'#fff'}}>{z.name.toUpperCase()}</span>
-              <span style={{fontSize:8,color:'rgba(255,255,255,0.85)'}}>⭐{z.completed}/{z.total}</span>
-            </button>
-          );
-        })}
-        <div style={{position:'absolute',bottom:8,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,0.55)',color:'#fff',borderRadius:99,padding:'4px 12px',fontSize:10,fontWeight:600,backdropFilter:'blur(4px)',display:'flex',alignItems:'center',gap:5}}>
-          <span style={{width:7,height:7,background:'#22c55e',borderRadius:'50%',display:'inline-block',boxShadow:'0 0 0 2px rgba(34,197,94,0.35)'}}/>📍 You are here
-        </div>
-      </div>
-
-      {/* Zone list */}
-      <div style={{padding:'14px'}}>
-        <div style={{fontSize:12,fontWeight:800,color:'rgba(255,255,255,0.6)',marginBottom:10,textTransform:'uppercase',letterSpacing:0.5}}>Your Zones</div>
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {ZONES.filter(z=>z.unlocked).map(z=>(
-            <button key={z.id} onClick={()=>onZone(z)} style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:14,padding:'11px 13px',cursor:'pointer',display:'flex',alignItems:'center',gap:11,textAlign:'left'}}>
-              <div style={{width:42,height:42,borderRadius:12,background:z.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0,boxShadow:`0 3px 10px ${z.color}44`}}>{z.emoji}</div>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,color:'#fff',fontSize:13}}>{z.name}</div>
-                <div style={{display:'flex',alignItems:'center',gap:7,marginTop:4}}>
-                  <div style={{flex:1,background:'rgba(255,255,255,0.1)',borderRadius:99,height:4,overflow:'hidden'}}>
-                    <div style={{height:'100%',width:`${(z.completed/z.total)*100}%`,background:z.color,borderRadius:99}}/>
-                  </div>
-                  <span style={{fontSize:10,color:'rgba(255,255,255,0.45)',whiteSpace:'nowrap'}}>{z.completed}/{z.total}</span>
-                </div>
-              </div>
-              <span style={{fontSize:17,color:'rgba(255,255,255,0.25)'}}>›</span>
-            </button>
-          ))}
-        </div>
-      </div>
-      <NavBar active="map" onNav={onNav}/>
-    </div>
-  );
-}
-
-function LessonScreen({zone, onNav, onDone}) {
-  const lessons = LESSONS.default;
-  const [idx, setIdx] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [showExp, setShowExp] = useState(false);
-  const [answers, setAnswers] = useState([]);
-  const lesson = lessons[idx];
-  const total = lessons.length;
-
-  useEffect(()=>{ setSelected(null); setShowExp(false); },[idx]);
-  useEffect(()=>{
-    if(selected!==null){ const t=setTimeout(()=>setShowExp(true),350); return ()=>clearTimeout(t); }
-  },[selected]);
-
-  const correct = lesson.options.find(o=>o.id===selected)?.correct;
-
-  const handleNext = () => {
-    const newAnswers = [...answers, {correct}];
-    if(idx+1>=total){ onDone(newAnswers); }
-    else{ setAnswers(newAnswers); setIdx(idx+1); }
+  const next=()=>{
+    const a=[...answers,{ok:isOk}];
+    if(idx+1>=total) onDone(a);
+    else{setAnswers(a);setIdx(i=>i+1);}
   };
 
-  const optStyle = (opt) => {
-    if(selected===null) return {background:'#fff',border:'2px solid #e5e7eb',color:'#1e3a5f',cursor:'pointer'};
-    if(opt.correct) return {background:'#dcfce7',border:'2px solid #22c55e',color:'#166534'};
-    if(opt.id===selected&&!opt.correct) return {background:'#fee2e2',border:'2px solid #ef4444',color:'#991b1b'};
-    return {background:'#f9fafb',border:'2px solid #e5e7eb',color:'#9ca3af',opacity:0.55};
-  };
+  const oBg=o=>{if(sel===null)return '#fff';if(o.ok)return '#dcfce7';if(o.id===sel&&!o.ok)return '#fee2e2';return '#f8fafc';};
+  const oBdr=o=>{if(sel===null)return '2px solid #e2e8f0';if(o.ok)return '2px solid #22c55e';if(o.id===sel&&!o.ok)return '2px solid #ef4444';return '2px solid #e2e8f0';};
+  const oCol=o=>{if(sel===null)return '#1e293b';if(o.ok)return '#166534';if(o.id===sel&&!o.ok)return '#991b1b';return '#94a3b8';};
 
-  const diffColor = {Easy:'#22c55e',Medium:'#f59e0b',Hard:'#ef4444'};
-
-  return (
-    <div style={{minHeight:'100vh',background:'#f0fdf4',display:'flex',flexDirection:'column'}}>
-      {/* Header */}
-      <div style={{background:'#1e3a5f',padding:'12px 14px'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}}>
-          <button onClick={()=>onNav('map')} style={{background:'rgba(255,255,255,0.15)',border:'none',borderRadius:10,padding:'7px 12px',color:'#fff',fontSize:17,cursor:'pointer'}}>←</button>
+  return(
+    <div style={{minHeight:'100vh',background:'#f8fafc',display:'flex',flexDirection:'column'}}>
+      <div style={{background:'linear-gradient(135deg,#1e293b,#0f172a)',padding:'14px 16px',flexShrink:0}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:11}}>
+          <button onClick={()=>go('map')} style={{background:'rgba(255,255,255,0.12)',border:'none',borderRadius:11,padding:'8px 14px',color:'#fff',fontSize:17,cursor:'pointer',fontWeight:700}}>←</button>
           <div style={{textAlign:'center'}}>
-            <div style={{color:'#fff',fontWeight:800,fontSize:14}}>{zone?.emoji} {lesson.subtitle}</div>
-            <div style={{color:'rgba(255,255,255,0.55)',fontSize:11}}>{lesson.title}</div>
+            <div style={{color:'#fff',fontWeight:900,fontSize:15}}>{zone?.icon} {lesson.subtitle}</div>
+            <div style={{color:'rgba(255,255,255,0.45)',fontSize:11,marginTop:1}}>{lesson.title}</div>
           </div>
-          <div style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',borderRadius:20,padding:'4px 10px',fontSize:12,fontWeight:700,color:'#fff'}}>⭐ 124</div>
+          <div style={{background:'linear-gradient(135deg,#b45309,#f59e0b)',borderRadius:18,padding:'5px 11px',fontSize:13,fontWeight:800,color:'#fff'}}>⭐ 124</div>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:7}}>
-          <ProgressBar value={idx+(selected!==null?1:0)} max={total} color="#22c55e" h={6} />
-          <span style={{fontSize:10,color:'rgba(255,255,255,0.6)',whiteSpace:'nowrap'}}>{idx+1}/{total}</span>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <Bar val={idx+(sel!==null?1:0)} max={total} color="#22c55e" h={7} style={{flex:1}}/>
+          <span style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontWeight:700,whiteSpace:'nowrap'}}>{idx+1}/{total}</span>
         </div>
-        <div style={{display:'flex',gap:6,marginTop:7}}>
-          <span style={{background:diffColor[lesson.difficulty]||'#6b7280',color:'#fff',borderRadius:99,padding:'2px 9px',fontSize:10,fontWeight:700}}>{lesson.difficulty}</span>
-          {lesson.streak>0&&<span style={{background:'linear-gradient(135deg,#ef4444,#f97316)',color:'#fff',borderRadius:99,padding:'2px 9px',fontSize:10,fontWeight:700}}>🔥 Streak {lesson.streak}</span>}
+        <div style={{display:'flex',gap:7,marginTop:9}}>
+          <span style={{background:diffC[lesson.difficulty],color:'#fff',borderRadius:99,padding:'3px 11px',fontSize:11,fontWeight:800}}>{lesson.difficulty}</span>
+          {lesson.streak>0&&<span style={{background:'linear-gradient(135deg,#dc2626,#f97316)',color:'#fff',borderRadius:99,padding:'3px 11px',fontSize:11,fontWeight:800}}>🔥 Streak {lesson.streak}</span>}
         </div>
       </div>
 
-      {/* Scenario */}
-      <div style={{background:'linear-gradient(135deg,#1e40af,#3b82f6)',padding:'14px'}}>
-        <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:11}}>
-          <div style={{width:38,height:38,background:'rgba(255,255,255,0.2)',borderRadius:50,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0}}>🧑‍🏫</div>
-          <div style={{background:'rgba(255,255,255,0.15)',borderRadius:'4px 13px 13px 13px',padding:'9px 13px'}}>
-            <div style={{color:'#fff',fontWeight:800,fontSize:14,marginBottom:2}}>{lesson.title}</div>
-            <div style={{color:'rgba(255,255,255,0.85)',fontSize:12}}>{lesson.scenario}</div>
+      <div style={{background:'linear-gradient(135deg,#1d4ed8,#2563eb)',padding:'16px',flexShrink:0}}>
+        <div style={{display:'flex',gap:11,alignItems:'flex-start',marginBottom:12}}>
+          <div style={{width:44,height:44,background:'rgba(255,255,255,0.18)',borderRadius:50,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0,border:'2px solid rgba(255,255,255,0.25)'}}>🧑‍🏫</div>
+          <div style={{background:'rgba(255,255,255,0.15)',borderRadius:'6px 16px 16px 16px',padding:'10px 14px'}}>
+            <div style={{color:'#fff',fontWeight:900,fontSize:16,marginBottom:3}}>{lesson.title}</div>
+            <div style={{color:'rgba(255,255,255,0.85)',fontSize:12,lineHeight:1.4}}>{lesson.scenario}</div>
           </div>
         </div>
         <Pitch players={lesson.players}/>
       </div>
 
-      {/* Q&A */}
-      <div style={{padding:'14px',flex:1}}>
-        <div style={{fontWeight:800,fontSize:15,color:'#1e3a5f',marginBottom:11}}>{lesson.question}</div>
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {lesson.options.map(opt=>(
-            <button key={opt.id} onClick={()=>selected===null&&setSelected(opt.id)}
-              style={{...optStyle(opt),borderRadius:13,padding:'12px 13px',display:'flex',alignItems:'center',gap:9,fontSize:13,fontWeight:600,textAlign:'left',transition:'all 0.2s'}}>
-              <span style={{width:27,height:27,borderRadius:8,background:selected!==null&&opt.correct?'#22c55e':selected===opt.id&&!opt.correct?'#ef4444':'#e5e7eb',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:selected!==null&&(opt.correct||opt.id===selected)?'#fff':'#6b7280',flexShrink:0}}>
-                {selected!==null&&opt.correct?'✓':selected===opt.id&&!opt.correct?'✗':opt.id}
-              </span>
-              <span style={{fontSize:14}}>{opt.icon}</span>
-              {opt.text}
+      <div style={{padding:'16px',flex:1,overflowY:'auto'}}>
+        <div style={{fontWeight:900,fontSize:17,color:'#1e293b',marginBottom:13}}>{lesson.question}</div>
+        <div style={{display:'flex',flexDirection:'column',gap:9}}>
+          {lesson.options.map(o=>(
+            <button key={o.id} onClick={()=>sel===null&&setSel(o.id)}
+              style={{background:oBg(o),border:oBdr(o),borderRadius:15,padding:'13px 15px',display:'flex',alignItems:'center',gap:11,cursor:sel?'default':'pointer',transition:'all 0.25s',textAlign:'left',color:oCol(o)}}>
+              <div style={{width:30,height:30,borderRadius:9,background:sel!==null&&o.ok?'#22c55e':sel===o.id&&!o.ok?'#ef4444':'#e2e8f0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:900,color:sel!==null&&(o.ok||o.id===sel)?'#fff':'#64748b',flexShrink:0,transition:'all 0.25s'}}>
+                {sel!==null&&o.ok?'✓':sel===o.id&&!o.ok?'✗':o.id}
+              </div>
+              <span style={{fontSize:16,flexShrink:0}}>{o.icon}</span>
+              <span style={{fontSize:13,fontWeight:700,lineHeight:1.3}}>{o.text}</span>
             </button>
           ))}
         </div>
-        {showExp&&(
-          <div style={{marginTop:11,background:correct?'#dcfce7':'#fee2e2',border:`1.5px solid ${correct?'#22c55e':'#ef4444'}`,borderRadius:13,padding:'11px 13px',animation:'slideUp 0.3s ease'}}>
-            <div style={{fontWeight:700,fontSize:12,color:correct?'#166534':'#991b1b'}}>{lesson.explanation}</div>
+        {showTip&&(
+          <div style={{marginTop:13,background:isOk?'#f0fdf4':'#fff1f2',border:`2px solid ${isOk?'#22c55e':'#ef4444'}`,borderRadius:15,padding:'13px 15px',animation:'slideUp 0.35s ease'}}>
+            <div style={{fontWeight:800,fontSize:13,color:isOk?'#15803d':'#9f1239',lineHeight:1.5}}>{lesson.tip}</div>
           </div>
         )}
       </div>
 
-      <div style={{padding:'0 14px 24px'}}>
-        <Btn onClick={handleNext} disabled={selected===null} style={{width:'100%',opacity:selected===null?0.5:1}}>Next →</Btn>
+      <div style={{padding:'0 16px 28px',flexShrink:0}}>
+        <GreenBtn onClick={next} disabled={sel===null} style={{opacity:sel===null?0.45:1}}>Next →</GreenBtn>
       </div>
     </div>
   );
 }
 
-function ResultsScreen({answers, onPlayAgain, onNav}) {
-  const [animIn, setAnimIn] = useState(false);
-  useEffect(()=>{ const t=setTimeout(()=>setAnimIn(true),120); return ()=>clearTimeout(t); },[]);
-  const correct = answers.filter(a=>a.correct).length;
-  const total = answers.length||3;
-  const acc = Math.round((correct/total)*100);
-  const stars = acc>=90?3:acc>=60?2:1;
-  const isPerfect = correct===total;
+// ── RESULTS ─────────────────────────────────────────────────────────────────
 
-  const pieces = Array.from({length:28}).map((_,i)=>({
-    id:i, x:Math.random()*100, delay:Math.random()*1.2,
-    color:['#f59e0b','#22c55e','#3b82f6','#ef4444','#a855f7'][i%5],
-    size:5+Math.random()*7,
-  }));
+function Results({answers,onAgain,go}){
+  const [show,setShow]=useState(false);
+  useEffect(()=>{const t=setTimeout(()=>setShow(true),150);return()=>clearTimeout(t);},[]);
+  const correct=answers.filter(a=>a.ok).length;
+  const total=answers.length||5;
+  const acc=Math.round((correct/total)*100);
+  const stars=acc>=90?3:acc>=60?2:1;
+  const label=acc>=90?'BRILLIANT!':acc>=60?'GREAT JOB!':'GOOD TRY!';
 
-  return (
-    <div style={{minHeight:'100vh',background:'linear-gradient(180deg,#1a472a,#2d6a3f 50%,#1e3a5f)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px 18px',position:'relative',overflow:'hidden'}}>
-      {/* Confetti */}
-      <div style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none'}}>
-        {pieces.map(p=><div key={p.id} style={{position:'absolute',left:`${p.x}%`,top:'-10px',width:p.size,height:p.size,background:p.color,borderRadius:Math.random()>0.5?'50%':2,animation:`fall ${1.4+Math.random()}s ${p.delay}s ease-in forwards`}}/>)}
+  const conf=Array.from({length:35}).map((_,i)=>({id:i,x:Math.random()*100,delay:Math.random()*1.4,color:['#f59e0b','#22c55e','#3b82f6','#ef4444','#a855f7','#06b6d4'][i%6],size:5+Math.random()*8,round:Math.random()>0.5}));
+
+  return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(180deg,#14532d 0%,#166534 45%,#1e3a5f 100%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px 18px',position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',inset:0,pointerEvents:'none',overflow:'hidden'}}>
+        {conf.map(c=><div key={c.id} style={{position:'absolute',left:`${c.x}%`,top:-12,width:c.size,height:c.size,background:c.color,borderRadius:c.round?'50%':3,animation:`fall ${1.3+Math.random()*0.8}s ${c.delay}s ease-in forwards`}}/>)}
       </div>
 
-      <div style={{background:'rgba(255,255,255,0.09)',backdropFilter:'blur(10px)',border:'1.5px solid rgba(255,255,255,0.14)',borderRadius:24,padding:'26px 22px',width:'100%',maxWidth:360,textAlign:'center',transform:animIn?'scale(1) translateY(0)':'scale(0.88) translateY(20px)',opacity:animIn?1:0,transition:'all 0.5s cubic-bezier(0.34,1.56,0.64,1)'}}>
-        <div style={{fontSize:60,marginBottom:6,display:'inline-block',animation:animIn?'bounce 0.6s 0.5s ease both':'none'}}>🏆</div>
-        <div style={{fontSize:30,fontWeight:900,color:'#fff',marginBottom:3}}>{isPerfect?'PERFECT!':acc>=60?'BRILLIANT!':'GOOD TRY!'}</div>
-        <div style={{color:'rgba(255,255,255,0.65)',fontSize:13,marginBottom:18}}>{isPerfect?'You aced it! Incredible!':'You crushed this round!'}</div>
+      <div style={{width:'100%',maxWidth:370,background:'rgba(255,255,255,0.08)',backdropFilter:'blur(16px)',border:'1.5px solid rgba(255,255,255,0.14)',borderRadius:26,padding:'28px 22px',textAlign:'center',transform:show?'scale(1) translateY(0)':'scale(0.85) translateY(24px)',opacity:show?1:0,transition:'all 0.55s cubic-bezier(0.34,1.56,0.64,1)'}}>
+        <div style={{fontSize:68,marginBottom:6,display:'inline-block',animation:show?'bounce 0.7s 0.55s ease both':'none'}}>🏆</div>
+        <div style={{fontSize:32,fontWeight:900,color:'#fff',marginBottom:4,letterSpacing:-0.5}}>{label}</div>
+        <div style={{color:'rgba(255,255,255,0.6)',fontSize:14,marginBottom:22}}>You crushed this round! 🎉</div>
 
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
-          {[{label:'Score',value:`${correct}/${total}`,emoji:'⚽'},{label:'Accuracy',value:`${acc}%`,emoji:'🎯'}].map(item=>(
-            <div key={item.label} style={{background:'rgba(255,255,255,0.1)',borderRadius:14,padding:'13px 10px'}}>
-              <div style={{fontSize:20,marginBottom:3}}>{item.emoji}</div>
-              <div style={{fontSize:22,fontWeight:900,color:'#fff'}}>{item.value}</div>
-              <div style={{fontSize:10,color:'rgba(255,255,255,0.55)'}}>{item.label}</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:18}}>
+          {[{e:'⚽',v:`${correct}/${total}`,l:'Score'},{e:'🎯',v:`${acc}%`,l:'Accuracy'}].map(s=>(
+            <div key={s.l} style={{background:'rgba(255,255,255,0.1)',borderRadius:16,padding:'16px 12px',border:'1px solid rgba(255,255,255,0.07)'}}>
+              <div style={{fontSize:26,marginBottom:5}}>{s.e}</div>
+              <div style={{fontSize:26,fontWeight:900,color:'#fff',letterSpacing:-0.5}}>{s.v}</div>
+              <div style={{fontSize:11,color:'rgba(255,255,255,0.45)',marginTop:2,fontWeight:600}}>{s.l}</div>
             </div>
           ))}
         </div>
 
-        <div style={{display:'flex',justifyContent:'center',marginBottom:14}}><Stars count={stars} max={3} size={34}/></div>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:18}}><Stars n={stars} size={36}/></div>
 
-        <div style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',borderRadius:13,padding:'11px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:9}}>
-          <span style={{fontSize:22}}>🧑‍🏫</span>
-          <span style={{fontSize:12,fontWeight:700,color:'#fff'}}>{isPerfect?'Perfect score! You\'re a champion! 🏆':'Keep it up, Champion! 💪 Almost there!'}</span>
+        <div style={{background:'linear-gradient(135deg,#b45309,#f59e0b)',borderRadius:15,padding:'13px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:11}}>
+          <span style={{fontSize:28}}>🧑‍🏫</span>
+          <span style={{fontSize:13,fontWeight:800,color:'#fff',textAlign:'left',lineHeight:1.4}}>
+            {acc>=90?'Perfect score! Champion! 🏆':'Keep it up, Champion! 💪 You\'re getting better!'}
+          </span>
         </div>
 
-        <div style={{background:'rgba(34,197,94,0.18)',border:'1px solid rgba(34,197,94,0.28)',borderRadius:11,padding:'7px 14px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span style={{color:'#86efac',fontSize:12,fontWeight:600}}>⚡ XP Earned</span>
-          <span style={{color:'#22c55e',fontSize:17,fontWeight:900}}>+{correct*10}</span>
+        <div style={{background:'rgba(34,197,94,0.15)',border:'1px solid rgba(34,197,94,0.28)',borderRadius:13,padding:'9px 16px',marginBottom:20,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{color:'#4ade80',fontSize:13,fontWeight:700}}>⚡ XP Earned</span>
+          <span style={{color:'#22c55e',fontSize:20,fontWeight:900}}>+{correct*10}</span>
         </div>
 
-        <div style={{display:'flex',gap:9}}>
-          <Btn onClick={onPlayAgain} style={{flex:1}}>🔄 Play Again</Btn>
-          <button onClick={()=>onNav('map')} style={{flex:1,background:'rgba(255,255,255,0.13)',color:'#fff',border:'2px solid rgba(255,255,255,0.22)',borderRadius:13,padding:'13px 10px',fontSize:13,fontWeight:700,cursor:'pointer'}}>🗺️ Back to Map</button>
+        <div style={{display:'flex',gap:10}}>
+          <GreenBtn onClick={onAgain} style={{flex:1}}>🔄 Play Again</GreenBtn>
+          <button onClick={()=>go('map')} style={{flex:1,background:'rgba(255,255,255,0.12)',color:'#fff',border:'2px solid rgba(255,255,255,0.2)',borderRadius:16,padding:'15px 10px',fontSize:13,fontWeight:800,cursor:'pointer'}}>🗺️ Back to Map</button>
         </div>
       </div>
     </div>
   );
 }
 
-function ProfileScreen({onNav}) {
-  const zones = [{name:'Shooting',color:'#ef4444',done:18,total:30},{name:'Passing',color:'#3b82f6',done:24,total:30},{name:'Defending',color:'#8b5cf6',done:15,total:30},{name:'Tactics',color:'#06b6d4',done:18,total:30},{name:'Ball Skills',color:'#10b981',done:20,total:30}];
-  const stats = [{label:'Lessons',value:28,emoji:'📚'},{label:'Stars',value:124,emoji:'⭐'},{label:'Accuracy',value:'78%',emoji:'🎯'},{label:'Best Streak',value:'7 days',emoji:'🔥'}];
-  return (
+// ── PROFILE ─────────────────────────────────────────────────────────────────
+
+function Profile({go}){
+  const zones=[{n:'Shooting',c:'#ef4444',d:18,t:30},{n:'Passing',c:'#3b82f6',d:24,t:30},{n:'Defending',c:'#8b5cf6',d:15,t:30},{n:'Tactics',c:'#06b6d4',d:18,t:30},{n:'Ball Skills',c:'#10b981',d:20,t:30}];
+  const stats=[{e:'📚',v:28,l:'Lessons'},{e:'⭐',v:124,l:'Stars'},{e:'🎯',v:'78%',l:'Accuracy'},{e:'🔥',v:'7d',l:'Best Streak'}];
+  return(
     <div style={{minHeight:'100vh',background:'#f0fdf4',paddingBottom:90}}>
-      <div style={{background:'linear-gradient(180deg,#1e3a5f,#1e40af)',padding:'22px 18px 32px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:14}}>
-          <div style={{width:68,height:68,borderRadius:'50%',background:'linear-gradient(135deg,#22c55e,#16a34a)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:30,border:'3px solid rgba(255,255,255,0.3)'}}>⚽</div>
+      <div style={{background:'linear-gradient(135deg,#1e293b,#0f172a)',padding:'24px 18px 36px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:18}}>
+          <div style={{width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#22c55e,#16a34a)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:34,border:'3px solid rgba(255,255,255,0.2)',boxShadow:'0 6px 20px rgba(34,197,94,0.35)'}}>⚽</div>
           <div>
-            <div style={{color:'#fff',fontWeight:900,fontSize:20}}>Alex</div>
-            <div style={{color:'rgba(255,255,255,0.65)',fontSize:12}}>Level 4 Player</div>
-            <div style={{marginTop:5,background:'rgba(255,255,255,0.13)',color:'#86efac',borderRadius:99,padding:'2px 10px',fontSize:10,fontWeight:600,display:'inline-block'}}>🔥 2 day streak</div>
+            <div style={{color:'#fff',fontWeight:900,fontSize:22,letterSpacing:-0.3}}>Alex</div>
+            <div style={{color:'rgba(255,255,255,0.45)',fontSize:12,marginTop:2}}>Level 4 Player</div>
+            <div style={{marginTop:6,background:'rgba(34,197,94,0.18)',border:'1px solid rgba(34,197,94,0.3)',color:'#4ade80',borderRadius:99,padding:'3px 11px',fontSize:11,fontWeight:700,display:'inline-block'}}>🔥 2 day streak</div>
           </div>
+          <button style={{marginLeft:'auto',background:'rgba(255,255,255,0.1)',border:'none',borderRadius:11,padding:'9px',cursor:'pointer',fontSize:17}}>✏️</button>
         </div>
-        <div style={{marginTop:14}}>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:5,fontSize:11,color:'rgba(255,255,255,0.6)'}}>
-            <span>850 / 1300 XP</span><span style={{color:'#86efac',fontWeight:700}}>Level 5 →</span>
-          </div>
-          <ProgressBar value={850} max={1300} color="#22c55e" h={9}/>
+        <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',display:'flex',justifyContent:'space-between',marginBottom:6}}>
+          <span>850 / 1300 XP</span><span style={{color:'#4ade80',fontWeight:700}}>Level 5 →</span>
         </div>
+        <Bar val={850} max={1300} color="#22c55e" h={10}/>
       </div>
 
-      <div style={{margin:'-16px 14px 14px',background:'#fff',borderRadius:20,padding:16,boxShadow:'0 4px 20px rgba(0,0,0,0.09)',position:'relative',zIndex:2}}>
-        <div style={{fontWeight:800,color:'#1e3a5f',marginBottom:12,fontSize:14}}>📊 My Stats</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+      <div style={{margin:'-20px 14px 14px',background:'#fff',borderRadius:22,padding:18,boxShadow:'0 6px 28px rgba(0,0,0,0.1)',position:'relative',zIndex:2}}>
+        <div style={{fontWeight:900,color:'#1e293b',marginBottom:14,fontSize:15}}>📊 My Stats</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11}}>
           {stats.map(s=>(
-            <div key={s.label} style={{background:'#f8fafc',borderRadius:12,padding:'11px',display:'flex',alignItems:'center',gap:9}}>
-              <span style={{fontSize:20}}>{s.emoji}</span>
-              <div><div style={{fontWeight:800,color:'#1e3a5f',fontSize:15}}>{s.value}</div><div style={{fontSize:9,color:'#6b7280'}}>{s.label}</div></div>
+            <div key={s.l} style={{background:'#f8fafc',borderRadius:14,padding:'13px',display:'flex',alignItems:'center',gap:10,border:'1px solid #e2e8f0'}}>
+              <span style={{fontSize:24}}>{s.e}</span>
+              <div><div style={{fontWeight:900,color:'#1e293b',fontSize:17}}>{s.v}</div><div style={{fontSize:10,color:'#64748b',fontWeight:600}}>{s.l}</div></div>
             </div>
           ))}
         </div>
       </div>
 
       <div style={{margin:'0 14px'}}>
-        <div style={{background:'#fff',borderRadius:16,padding:14,boxShadow:'0 2px 10px rgba(0,0,0,0.06)'}}>
-          <div style={{fontWeight:800,color:'#1e3a5f',marginBottom:11,fontSize:14}}>🗺️ Zone Progress</div>
+        <div style={{background:'#fff',borderRadius:18,padding:16,boxShadow:'0 3px 12px rgba(0,0,0,0.06)'}}>
+          <div style={{fontWeight:900,color:'#1e293b',marginBottom:13,fontSize:15}}>🗺️ Zone Progress</div>
           {zones.map(z=>(
-            <div key={z.name} style={{marginBottom:9}}>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:11,fontWeight:600,color:'#374151',marginBottom:3}}>
-                <span>{z.name}</span><span style={{color:z.color}}>{z.done}/{z.total}</span>
+            <div key={z.n} style={{marginBottom:11}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:12,fontWeight:700,color:'#334155',marginBottom:4}}>
+                <span>{z.n}</span><span style={{color:z.c}}>{z.d}/{z.t}</span>
               </div>
-              <ProgressBar value={z.done} max={z.total} color={z.color} h={6}/>
+              <Bar val={z.d} max={z.t} color={z.c} h={7}/>
             </div>
           ))}
         </div>
       </div>
-      <NavBar active="profile" onNav={onNav}/>
+      <NavBar active="profile" go={go}/>
     </div>
   );
 }
 
-function AwardsScreen({onNav}) {
-  const [tab, setTab] = useState('awards');
-  return (
+// ── AWARDS ──────────────────────────────────────────────────────────────────
+
+function Awards({go}){
+  const [tab,setTab]=useState('awards');
+  return(
     <div style={{minHeight:'100vh',background:'#f0fdf4',paddingBottom:90}}>
-      <div style={{background:'linear-gradient(180deg,#1e3a5f,#1e40af)',padding:'18px 18px 22px'}}>
-        <div style={{textAlign:'center',marginBottom:14}}>
-          <div style={{fontSize:26,marginBottom:3}}>🏆</div>
-          <div style={{fontWeight:900,color:'#fff',fontSize:18}}>Awards & Shop</div>
-          <div style={{color:'rgba(255,255,255,0.55)',fontSize:12}}>⭐ 124 stars collected</div>
+      <div style={{background:'linear-gradient(135deg,#1e293b,#0f172a)',padding:'20px 18px 24px'}}>
+        <div style={{textAlign:'center',marginBottom:16}}>
+          <div style={{fontSize:30,marginBottom:5}}>🏆</div>
+          <div style={{fontWeight:900,color:'#fff',fontSize:20,letterSpacing:-0.3}}>Awards & Shop</div>
+          <div style={{color:'rgba(255,255,255,0.45)',fontSize:12,marginTop:3}}>⭐ 124 stars collected</div>
         </div>
-        <div style={{display:'flex',background:'rgba(255,255,255,0.1)',borderRadius:12,padding:4}}>
+        <div style={{display:'flex',background:'rgba(255,255,255,0.08)',borderRadius:14,padding:4}}>
           {['awards','shop'].map(t=>(
-            <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:'8px',border:'none',borderRadius:10,background:tab===t?'#fff':'none',color:tab===t?'#1e3a5f':'rgba(255,255,255,0.65)',fontWeight:700,fontSize:13,cursor:'pointer',transition:'all 0.2s'}}>
+            <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:'9px',border:'none',borderRadius:11,background:tab===t?'#fff':'none',color:tab===t?'#1e293b':'rgba(255,255,255,0.5)',fontWeight:800,fontSize:14,cursor:'pointer',transition:'all 0.2s'}}>
               {t==='awards'?'🏅 Awards':'🛒 Shop'}
             </button>
           ))}
         </div>
       </div>
 
-      <div style={{padding:'14px'}}>
+      <div style={{padding:'16px'}}>
         {tab==='awards'?(
           <>
-            <div style={{fontWeight:800,color:'#1e3a5f',fontSize:14,marginBottom:11}}>My Badges</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:9,marginBottom:16}}>
-              {AWARDS.map(a=>(
-                <div key={a.id} style={{background:a.unlocked?'#fff':'#f3f4f6',borderRadius:15,padding:'14px 9px',textAlign:'center',boxShadow:a.unlocked?'0 2px 10px rgba(0,0,0,0.07)':'none',border:a.unlocked?`2px solid ${a.gold?'#f59e0b':'#e5e7eb'}`:'2px dashed #d1d5db',opacity:a.unlocked?1:0.6}}>
-                  <div style={{fontSize:30,marginBottom:5,filter:a.unlocked?'none':'grayscale(1)'}}>{a.emoji}</div>
-                  <div style={{fontSize:9,fontWeight:700,color:'#374151',lineHeight:1.3}}>{a.name}</div>
-                  {!a.unlocked&&<div style={{fontSize:9,color:'#9ca3af',marginTop:2}}>🔒 Locked</div>}
+            <div style={{fontWeight:900,color:'#1e293b',fontSize:15,marginBottom:13}}>My Badges</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:18}}>
+              {AWARDS.map((a,i)=>(
+                <div key={i} style={{background:a.unlocked?'#fff':'#f1f5f9',borderRadius:18,padding:'16px 10px',textAlign:'center',boxShadow:a.unlocked?'0 4px 16px rgba(0,0,0,0.08)':'none',border:a.unlocked?`2px solid ${a.gold?'#f59e0b':'#cbd5e1'}`:'2px dashed #cbd5e1',opacity:a.unlocked?1:0.55}}>
+                  <div style={{fontSize:34,marginBottom:6,filter:a.unlocked?'none':'grayscale(1)'}}>{a.emoji}</div>
+                  <div style={{fontSize:9.5,fontWeight:800,color:'#334155',lineHeight:1.3}}>{a.name}</div>
+                  {!a.unlocked&&<div style={{fontSize:9,color:'#94a3b8',marginTop:3}}>🔒 Locked</div>}
                 </div>
               ))}
             </div>
-            <div style={{background:'#fff',borderRadius:15,padding:13,boxShadow:'0 2px 10px rgba(0,0,0,0.06)',border:'2px solid #fde68a'}}>
-              <div style={{display:'flex',alignItems:'center',gap:11}}>
-                <span style={{fontSize:30}}>📦</span>
+            <div style={{background:'#fff',borderRadius:18,padding:15,boxShadow:'0 3px 12px rgba(0,0,0,0.07)',border:'2px solid #fde68a'}}>
+              <div style={{display:'flex',alignItems:'center',gap:13}}>
+                <span style={{fontSize:34}}>📦</span>
                 <div style={{flex:1}}>
-                  <div style={{fontWeight:800,color:'#1e3a5f',fontSize:13}}>Collect 100 stars</div>
-                  <div style={{fontSize:11,color:'#6b7280',marginBottom:5}}>Unlock the mystery reward!</div>
-                  <ProgressBar value={70} max={100} color="#f59e0b" h={7}/>
-                  <div style={{fontSize:10,color:'#6b7280',marginTop:3}}>70 / 100</div>
+                  <div style={{fontWeight:900,color:'#1e293b',fontSize:14}}>Collect 100 stars</div>
+                  <div style={{fontSize:11,color:'#64748b',marginBottom:7}}>Unlock the mystery reward!</div>
+                  <Bar val={70} max={100} color="#f59e0b" h={8}/>
+                  <div style={{fontSize:10,color:'#94a3b8',marginTop:4,fontWeight:600}}>70 / 100</div>
                 </div>
               </div>
             </div>
           </>
         ):(
           <>
-            <div style={{fontWeight:800,color:'#1e3a5f',fontSize:14,marginBottom:11}}>Star Store</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-              {SHOP.map(item=>(
-                <div key={item.id} style={{background:'#fff',borderRadius:15,padding:'14px 12px',boxShadow:'0 2px 10px rgba(0,0,0,0.06)',textAlign:'center',border:item.owned?'2px solid #22c55e':'2px solid transparent'}}>
-                  <div style={{fontSize:34,marginBottom:7}}>{item.emoji}</div>
-                  <div style={{fontWeight:700,color:'#1e3a5f',fontSize:12,marginBottom:6}}>{item.name}</div>
-                  {item.owned?<div style={{background:'#dcfce7',color:'#16a34a',borderRadius:99,padding:'4px 11px',fontSize:10,fontWeight:700}}>✓ Owned</div>
-                    :<button style={{background:'linear-gradient(135deg,#d97706,#f59e0b)',color:'#fff',border:'none',borderRadius:99,padding:'5px 13px',fontSize:11,fontWeight:700,cursor:'pointer'}}>⭐ {item.cost}</button>}
+            <div style={{fontWeight:900,color:'#1e293b',fontSize:15,marginBottom:13}}>Star Store</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11}}>
+              {SHOP.map((s,i)=>(
+                <div key={i} style={{background:'#fff',borderRadius:18,padding:'18px 14px',boxShadow:'0 3px 14px rgba(0,0,0,0.07)',textAlign:'center',border:s.owned?'2px solid #22c55e':'2px solid transparent'}}>
+                  <div style={{fontSize:38,marginBottom:8}}>{s.e}</div>
+                  <div style={{fontWeight:800,color:'#1e293b',fontSize:13,marginBottom:8}}>{s.n}</div>
+                  {s.owned?<div style={{background:'#dcfce7',color:'#16a34a',borderRadius:99,padding:'5px 13px',fontSize:11,fontWeight:800}}>✓ Owned</div>
+                    :<button style={{background:'linear-gradient(135deg,#b45309,#f59e0b)',color:'#fff',border:'none',borderRadius:99,padding:'7px 16px',fontSize:12,fontWeight:800,cursor:'pointer'}}>⭐ {s.cost}</button>}
                 </div>
               ))}
             </div>
           </>
         )}
       </div>
-      <NavBar active="awards" onNav={onNav}/>
+      <NavBar active="awards" go={go}/>
     </div>
   );
 }
 
-// ─── APP ─────────────────────────────────────────────────────────────────────
+// ── APP ─────────────────────────────────────────────────────────────────────
 
-function App() {
-  const [screen, setScreen] = useState('home');
-  const [zone, setZone] = useState(null);
-  const [answers, setAnswers] = useState([]);
+function App(){
+  const [screen,setScreen]=useState('home');
+  const [zone,setZone]=useState(null);
+  const [answers,setAnswers]=useState([]);
 
-  const onNav = (s) => setScreen(s);
-  const onZone = (z) => { setZone(z); setAnswers([]); setScreen('lesson'); };
-  const onDone = (ans) => { setAnswers(ans); setScreen('results'); };
-  const onPlayAgain = () => { setAnswers([]); setScreen('lesson'); };
+  const go=s=>setScreen(s);
+  const startZone=z=>{setZone(z);setAnswers([]);setScreen('lesson');};
+  const onDone=a=>{setAnswers(a);setScreen('results');};
+  const onAgain=()=>{setAnswers([]);setScreen('lesson');};
 
-  const wrap = (children) => (
-    <div style={{maxWidth:430,margin:'0 auto',minHeight:'100vh',position:'relative',overflowX:'hidden',boxShadow:'0 0 60px rgba(0,0,0,0.25)'}}>
-      {children}
+  return(
+    <div style={{maxWidth:430,margin:'0 auto',minHeight:'100vh',position:'relative',overflowX:'hidden'}}>
+      {screen==='home'   &&<Home go={go} startZone={startZone}/>}
+      {screen==='map'    &&<Map go={go} startZone={startZone}/>}
+      {screen==='lesson' &&<Lesson zone={zone} go={go} onDone={onDone}/>}
+      {screen==='results'&&<Results answers={answers} onAgain={onAgain} go={go}/>}
+      {screen==='profile'&&<Profile go={go}/>}
+      {screen==='awards' &&<Awards go={go}/>}
     </div>
   );
-
-  if(screen==='home') return wrap(<HomeScreen state={{}} onNav={onNav} onZone={onZone}/>);
-  if(screen==='map') return wrap(<MapScreen onNav={onNav} onZone={onZone}/>);
-  if(screen==='lesson') return wrap(<LessonScreen zone={zone} onNav={onNav} onDone={onDone}/>);
-  if(screen==='results') return wrap(<ResultsScreen answers={answers} onPlayAgain={onPlayAgain} onNav={onNav}/>);
-  if(screen==='profile') return wrap(<ProfileScreen onNav={onNav}/>);
-  if(screen==='awards') return wrap(<AwardsScreen onNav={onNav}/>);
-  return wrap(<HomeScreen state={{}} onNav={onNav} onZone={onZone}/>);
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
